@@ -1,0 +1,149 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _notifBattery = true;
+  bool _notifRtk = true;
+  bool _notifDocking = false;
+  bool _notifCharging = false;
+  bool _notifStuck = true;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notifBattery = prefs.getBool('notif_battery') ?? true;
+      _notifRtk = prefs.getBool('notif_rtk') ?? true;
+      _notifDocking = prefs.getBool('notif_docking') ?? false;
+      _notifCharging = prefs.getBool('notif_charging') ?? false;
+      _notifStuck = prefs.getBool('notif_stuck') ?? true;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Indstillinger")),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // --- TEMA INDSTILLINGER ---
+          const Text("Udseende", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            child: ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeNotifier,
+              builder: (context, mode, _) {
+                return ListTile(
+                  leading: const Icon(Icons.palette),
+                  title: const Text("App Tema"),
+                  trailing: DropdownButton<ThemeMode>(
+                    value: mode,
+                    underline: const SizedBox(),
+                    items: const [
+                      DropdownMenuItem(value: ThemeMode.system, child: Text("System (Auto)")),
+                      DropdownMenuItem(value: ThemeMode.light, child: Text("Lyst Tema")),
+                      DropdownMenuItem(value: ThemeMode.dark, child: Text("Mørkt Tema")),
+                    ],
+                    onChanged: (newMode) {
+                      if (newMode != null) themeNotifier.value = newMode;
+                    },
+                  ),
+                );
+              }
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // --- NOTIFIKATIONS VALG ---
+          const Text("Vælg Notifikationer", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.battery_alert, color: Colors.orange),
+                  title: const Text("Lavt batteri"),
+                  subtitle: const Text("Giv besked når batteriet er under 20%"),
+                  value: _notifBattery,
+                  onChanged: (val) {
+                    setState(() => _notifBattery = val);
+                    _savePreference('notif_battery', val);
+                  },
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.satellite_alt, color: Colors.redAccent),
+                  title: const Text("RTK / GNSS status"),
+                  subtitle: const Text("Advarsel hvis den mister sit Fix"),
+                  value: _notifRtk,
+                  onChanged: (val) {
+                    setState(() => _notifRtk = val);
+                    _savePreference('notif_rtk', val);
+                  },
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.home, color: Colors.blueAccent),
+                  title: const Text("Kører hjem / Docking"),
+                  subtitle: const Text("Når maskinen søger mod laderen"),
+                  value: _notifDocking,
+                  onChanged: (val) {
+                    setState(() => _notifDocking = val);
+                    _savePreference('notif_docking', val);
+                  },
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.bolt, color: Colors.amber),
+                  title: const Text("Opladningsstatus"),
+                  subtitle: const Text("Når maskinen er tilsluttet strøm"),
+                  value: _notifCharging,
+                  onChanged: (val) {
+                    setState(() => _notifCharging = val);
+                    _savePreference('notif_charging', val);
+                  },
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.warning, color: Colors.red),
+                  title: const Text("Sidder fast"),
+                  subtitle: const Text("Kritisk advarsel hvis den holder stille og ikke kan komme videre"),
+                  value: _notifStuck,
+                  onChanged: (val) {
+                    setState(() => _notifStuck = val);
+                    _savePreference('notif_stuck', val);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

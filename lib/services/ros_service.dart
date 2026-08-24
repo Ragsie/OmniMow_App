@@ -3,10 +3,15 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RosService extends ChangeNotifier {
   WebSocketChannel? _channel;
   bool isConnected = false;
+
+  String currentIp = "";
+  String currentName = "Mower Dashboard";
 
   // --- ROBOT STATE (Live data) ---
   double batteryLevel = 100.0;
@@ -15,12 +20,38 @@ class RosService extends ChangeNotifier {
   String cpuLoad = "Unknown";
   int satellites = 0;
   
-  // Navigation data
-  List<Offset> pathPoints = [const Offset(0, 0)];
-  Offset currentPosition = const Offset(0, 0);
-  double robotHeading = 0.0;
+  // --- NYE STATISTIK VARIABLER ---
+  double totalDistanceKm = 0.0;
+  int totalMowingMinutes = 0;
+  int chargeCycles = 0;
+  
+  // --- KORT & POSITIONERING ---
+  double currentX = 0.0; 
+  double currentY = 0.0; 
+  
+  // Historik-liste over alle punkter robotten har kørt igennem (Sporet)
+  final List<Offset> pathHistory = [];
 
-  void connect(String url) {
+  // Når der kommer en ny position fra robotten (f.eks. /odom eller /gps/fix)
+  void updatePosition(double x, double y) {
+    currentX = x;
+    currentY = y;
+    pathHistory.add(Offset(x, y));
+    notifyListeners();
+  }
+  
+  // Hvis du vil rydde sporet
+  void clearPath() {
+    pathHistory.clear();
+    notifyListeners();
+  }
+
+  // --- FORBINDELSE ---
+  void connect(String name, String ip) {
+    currentName = name;   
+    currentIp = ip; 
+    final url = 'ws://$ip:9090'; 
+
     try {
       _channel = WebSocketChannel.connect(Uri.parse(url));
       isConnected = true;
@@ -37,73 +68,154 @@ class RosService extends ChangeNotifier {
     }
   }
 
-  void _handleIncomingMessage(Map<String, dynamic> data) {
+  // Variables to avoid spam
+  bool _hasWarnedBattery = false;
+  bool _hasWarnedRtk = false;
+  bool _hasWarnedDocking = false;
+  bool _hasWarnedCharging = false;
+  bool _hasWarnedStuck = false;
+
+  void _handleIncomingMessage(Map<String, dynamic> data) async {
     final topic = data['topic'];
     final msg = data['msg'];
+    final prefs = await SharedPreferences.getInstance();
 
     if (topic == '/battery_status') {
       batteryLevel = msg['percentage'] * 100;
+      bool allowBattery = prefs.getBool('notif_battery') ?? true;
+      
+      if (batteryLevel < 20.0 && !_hasWarnedBattery && allowBattery) {
+        notificationService.showWarning(
+          id: 1, 
+          title: "Lavt Batteri!", 
+          body: "Robotten har kun ${batteryLevel.toInt()}% strøm tilbage."
+        );
+        _hasWarnedBattery = true;
+      } else if (batteryLevel > 25.0) {
+        _hasWarnedBattery = false;
+      }
+      
     } else if (topic == '/rtk/status') {
       rtkStatus = msg['status_string'];
       satellites = msg['satellites'];
+      bool allowRtk = prefs.getBool('notif_rtk') ?? true;
+      
+      if (rtkStatus != "Fix" && !_hasWarnedRtk && allowRtk) {
+         notificationService.showWarning(
+          id: 2, 
+          title: "GNSS Advarsel", 
+          body: "Mistet RTK Fix! Nuværende status: $rtkStatus."
+        );
+        _hasWarnedRtk = true;
+      } else if (rtkStatus == "Fix") {
+        _hasWarnedRtk = false;
+      }
+    } else if (topic == '/mower/status') {
+      final state = msg['state'] ?? '';
+      
+      if (state == 'docking') {
+        bool allowDocking = prefs.getBool('notif_docking') ?? false;
+        if (!_hasWarnedDocking && allowDocking) {
+          notificationService.showWarning(id: 3, title: "Landroid", body: "Maskinen kører hjem mod dockingstationen.");
+          _hasWarnedDocking = true;
+        }
+      } else {
+        _hasWarnedDocking = false;
+      }
+
+      if (state == 'charging') {
+        bool allowCharging = prefs.getBool('notif_charging') ?? false;
+        if (!_hasWarnedCharging && allowCharging) {
+          notificationService.showWarning(id: 4, title: "Opladning", body: "Maskinen er nu i laderen og modtager strøm.");
+          _hasWarnedCharging = true;
+        }
+      } else {
+        _hasWarnedCharging = false;
+      }
+
+      if (state == 'stuck') {
+        bool allowStuck = prefs.getBool('notif_stuck') ?? true;
+        if (!_hasWarnedStuck && allowStuck) {
+          notificationService.showWarning(id: 5, title: "KRITISK ADVARSEL", body: "Robotten sidder fast og har brug for hjælp!");
+          _hasWarnedStuck = true;
+        }
+      } else {
+        _hasWarnedStuck = false;
+      }
+    } else if (topic == '/mower/metrics') {
+      totalDistanceKm = (msg['distance_meters'] ?? 0.0) / 1000.0;
+      totalMowingMinutes = msg['mowing_minutes'] ?? 0;
+      chargeCycles = msg['charge_cycles'] ?? 0;
+      notifyListeners();
+    } else if (topic == '/odom' || topic == '/gps/fix') {
+      // Hvis du modtager rigtige koordinater fra ROS 2:
+      // double x = msg['x'];
+      // double y = msg['y'];
+      // updatePosition(x, y);
     }
-    
-    notifyListeners();
   }
 
-  // --- COMMANDS TO THE ROBOT ---
+  // --- COMMANDS FOR THE ROBOT ---
   void sendCommand(String command) {
-    if (!isConnected && _simTimer == null) return;
+    if (!isConnected) return; 
     
-    // Use debugPrint instead of print during development
     debugPrint("Command sent to robot: $command");
     
-    /*
-    // The real implementation over WebSocket:
     final msg = {
       'op': 'publish',
       'topic': '/mower/command',
       'msg': {'data': command}
     };
     _channel?.sink.add(jsonEncode(msg));
-    */
   }
 
   void saveSchedule(List<String> days, TimeOfDay time) {
+    if (!isConnected) return;
+
     final scheduleData = {
       'days': days,
       'hour': time.hour,
       'minute': time.minute,
     };
     
-    // Use debugPrint instead of print
     debugPrint("Schedule saved and sent to ROS: $scheduleData");
+
+    final msg = {
+      'op': 'publish',
+      'topic': '/mower/schedule',
+      'msg': {'data': jsonEncode(scheduleData)}
+    };
+    _channel?.sink.add(jsonEncode(msg));
   }
 
   // --- SIMULATOR ---
   Timer? _simTimer;
+  double _simHeading = 0.0;
+
   void startSimulation() {
     isConnected = true;
     rtkStatus = "RTK Fixed";
     satellites = 24;
     cpuLoad = "Core 0: 42% | Core 1: 30%";
     
+    // Sæt startposition midt på kortet, hvis den er 0,0
+    if (currentX == 0 && currentY == 0) {
+      currentX = 150;
+      currentY = 150;
+    }
+
     _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      robotHeading += 0.05; 
+      _simHeading += 0.05; 
       double speed = 2.0;
-      currentPosition = Offset(
-        currentPosition.dx + (speed * math.cos(robotHeading)),
-        currentPosition.dy + (speed * math.sin(robotHeading)),
-      );
       
-      if (timer.tick % 10 == 0) {
-        pathPoints.add(currentPosition);
-      }
+      // Beregn ny simuleret position
+      double newX = currentX + (speed * math.cos(_simHeading));
+      double newY = currentY + (speed * math.sin(_simHeading));
+      
+      updatePosition(newX, newY);
 
       batteryLevel = math.max(0, batteryLevel - 0.01);
       progress = math.min(100, progress + 0.05);
-
-      notifyListeners();
     });
   }
 

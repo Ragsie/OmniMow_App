@@ -1,86 +1,47 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 class MowerMapPainter extends CustomPainter {
-  final List<Offset> pathPoints; // History of points traveled by the robot
-  final Offset currentPosition; // Robot's current position (x, y in meters/pixels)
-  final double robotHeading;    // Robot's heading (radians)
+  final List<Offset> path;
+  final Offset currentRobotPos;
 
-  MowerMapPainter({
-    required this.pathPoints,
-    required this.currentPosition,
-    required this.robotHeading,
-  });
+  MowerMapPainter({required this.path, required this.currentRobotPos});
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Draw the background (dark grass/garden look)
-    final Paint bgPaint = Paint()
-      ..color = const Color(0xFF1E272E)
-      ..style = PaintingStyle.fill;
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    // Draw a subtle grid for a technical, modern look
-    final Paint gridPaint = Paint()
-      ..color = const Color(0xFF333333)
-      ..strokeWidth = 1.0;
-    
-    double gridSize = 40.0;
-    for (double x = 0; x < size.width; x += gridSize) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-    }
-    for (double y = 0; y < size.height; y += gridSize) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    // 2. Draw the traveled path (route/history)
-    if (pathPoints.length > 1) {
-      final Paint pathPaint = Paint()
-        ..color = Colors.greenAccent.withValues(alpha: 0.6) // Updated from withOpacity
-        ..strokeWidth = 3.0
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round;
-
-      Path path = Path();
-      Offset centerOffset = Offset(size.width / 2, size.height / 2);
-      
-      path.moveTo(centerOffset.dx + pathPoints.first.dx, centerOffset.dy + pathPoints.first.dy);
-      for (int i = 1; i < pathPoints.length; i++) {
-        path.lineTo(centerOffset.dx + pathPoints[i].dx, centerOffset.dy + pathPoints[i].dy);
-      }
-      canvas.drawPath(path, pathPaint);
-    }
-
-    // 3. Draw the robot as a dot/icon on the map
-    final Paint robotPaint = Paint()
-      ..color = Colors.green
+    final paintGrassArea = Paint()
+      ..color = Colors.green.shade800
       ..style = PaintingStyle.fill;
 
-    Offset robotScreenPos = Offset(
-      (size.width / 2) + currentPosition.dx,
-      (size.height / 2) + currentPosition.dy,
-    );
-
-    // Draw the robot body
-    canvas.drawCircle(robotScreenPos, 12.0, robotPaint);
-
-    // Draw a direction arrow in front of the robot
-    final Paint arrowPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 3.0
+    final paintPath = Paint()
+      ..color = Colors.lightGreenAccent
+      ..strokeWidth = 4.0
+      ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    Offset frontPoint = Offset(
-      robotScreenPos.dx + (20 * math.cos(robotHeading)),
-      robotScreenPos.dy + (20 * math.sin(robotHeading)),
-    );
-    canvas.drawLine(robotScreenPos, frontPoint, arrowPaint);
+    final paintRobot = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.fill;
+
+    // 1. Tegn selve plæne-området (Baggrund)
+    final rect = Rect.fromLTWH(20, 20, size.width - 40, size.height - 40);
+    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(16)), paintGrassArea);
+
+    // 2. Tegn sporet (Hvor robotten har kørt)
+    if (path.length > 1) {
+      final pathPoints = Path();
+      pathPoints.moveTo(path.first.dx, path.first.dy);
+      for (var i = 1; i < path.length; i++) {
+        pathPoints.lineTo(path[i].dx, path[i].dy);
+      }
+      canvas.drawPath(pathPoints, paintPath);
+    }
+
+    // 3. Tegn robotten som en levende prik
+    canvas.drawCircle(currentRobotPos, 8.0, paintRobot);
   }
 
   @override
   bool shouldRepaint(covariant MowerMapPainter oldDelegate) {
-    return oldDelegate.pathPoints != pathPoints ||
-        oldDelegate.currentPosition != currentPosition ||
-        oldDelegate.robotHeading != robotHeading;
+    return oldDelegate.path != path || oldDelegate.currentRobotPos != currentRobotPos;
   }
 }

@@ -2,19 +2,41 @@ import 'package:flutter/material.dart';
 import 'widgets/mower_map_painter.dart';
 import 'services/ros_service.dart';
 import 'screens/schedule_screen.dart';
+import 'services/live_feed.dart';
+import 'screens/connection_screen.dart';
+import 'screens/settings_screen.dart';
+import 'services/notification_service.dart';
+import 'screens/nerd_metrics_screen.dart';
 
-void main() => runApp(const RobotApp());
+// 1. A global variable that tracks the theme (starts in system theme)
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
+
+void main() async {
+  // Ensure Flutter is ready before starting background services
+  WidgetsFlutterBinding.ensureInitialized();
+  await notificationService.init(); // Prepare notifications
+  
+  runApp(const RobotApp());
+}
 
 class RobotApp extends StatelessWidget {
   const RobotApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ROS 2 Mower',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(useMaterial3: true),
-      home: const DashboardScreen(),
+    // 2. ValueListenableBuilder genbygger appen, når temaet skifter
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, currentMode, _) {
+        return MaterialApp(
+          title: 'ROS 2 Mower',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData.light(useMaterial3: true), // Light theme
+          darkTheme: ThemeData.dark(useMaterial3: true), // Dark theme
+          themeMode: currentMode, // Tells the app which theme to use
+          home: const ConnectionScreen(),
+        );
+      }
     );
   }
 }
@@ -30,7 +52,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Start the simulation when the app opens (remove this when connecting the real robot!)
     rosService.startSimulation();
   }
 
@@ -38,8 +59,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Mower Dashboard"),
+        title: Text(rosService.currentName), 
+        leading: IconButton(
+          icon: const Icon(Icons.swap_horiz),
+          tooltip: 'Switch Robot',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ConnectionScreen()),
+            );
+          },
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
           ListenableBuilder(
             listenable: rosService,
             builder: (context, _) {
@@ -63,20 +104,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 1. Live map preview (made significantly larger)
+            // 1. Live map preview (Bruger nu det nye kort- og sporingssystem)
             SizedBox(
-              height: 380, // Height increased here for a larger map
+              height: 380,
               width: double.infinity,
               child: Card(
                 clipBehavior: Clip.antiAlias,
                 child: ListenableBuilder(
                   listenable: rosService,
                   builder: (context, _) {
-                    return CustomPaint(
+                     return CustomPaint(
                       painter: MowerMapPainter(
-                        pathPoints: rosService.pathPoints,
-                        currentPosition: rosService.currentPosition,
-                        robotHeading: rosService.robotHeading,
+                        path: rosService.pathHistory,
+                        currentRobotPos: Offset(rosService.currentX, rosService.currentY),
                       ),
                     );
                   }
@@ -139,7 +179,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const Text("Menu", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 8),
             
-            // Live Feed gets its own large primary button
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -151,7 +190,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 10),
             
-            // Schedule and Metrics sit side by side below Live Feed.
             Row(
               children: [
                 Expanded(
@@ -172,69 +210,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- NERD METRICS SCREEN (Live data) ---
-class NerdMetricsScreen extends StatelessWidget {
-  const NerdMetricsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("System Diagnostics")),
-      body: ListenableBuilder(
-        listenable: rosService,
-        builder: (context, _) {
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              const Text("Hardware Telemetry", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-              ListTile(
-                leading: const Icon(Icons.memory),
-                title: const Text("Main Controller CPU Load"),
-                subtitle: Text(rosService.cpuLoad),
-              ),
-              ListTile(
-                leading: const Icon(Icons.satellite_alt),
-                title: const Text("RTK GNSS Status"),
-                subtitle: Text("Fix Type: ${rosService.rtkStatus} | Satellites: ${rosService.satellites}"),
-              ),
-              const Divider(),
-              // More metrics can easily be added here
-            ],
-          );
-        }
-      ),
-    );
-  }
-}
-
-// --- LIVE FEED SCREEN (Placeholder) ---
-class LiveFeedScreen extends StatelessWidget {
-  const LiveFeedScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Camera Feed")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.videocam_off, size: 80, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text("Waiting for video stream..."),
-            const SizedBox(height: 8),
-            Text(
-              "Here we will implement flutter_webrtc\nto stream the YOLO camera feed.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade400),
-            ),
           ],
         ),
       ),

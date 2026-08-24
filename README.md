@@ -1,34 +1,34 @@
 # ROS 2 Mower App 🚜
 
-En moderne, lynhurtig kontrol-app bygget i Flutter til at styre en custom autonom robotplæneklipper. Appen fungerer som det primære interface mellem brugeren og robottens ROS 2 backend via WebSockets.
+A modern, fast control app built in Flutter for operating a custom autonomous robotic lawn mower. The app provides the primary interface between the user and the robot's ROS 2 backend through WebSockets.
 
-Projektet er designet til at håndtere en avanceret hardware-stack, hvor et Worx Landroid-chassis er blevet ombygget og opgraderet med ESP32-mikrocontrollere, dobbelte VESC-controllere til præcis motorstyring og et RTK GNSS-modul til centimeterpræcis navigation.
+The project is designed to handle an advanced hardware stack in which a Worx Landroid chassis has been rebuilt and upgraded with ESP32 microcontrollers, dual VESC controllers for precise motor control, and an RTK GNSS module for centimeter-level navigation.
 
 ## ✨ Funktioner
 
-* **Live Kortlægning:** Real-time visning af robottens position, rute og heading på et interaktivt kanvas.
-* **Telemetri & Metrics:** Overvågning af vitale systemdata såsom batteriniveau, fremdrift, main controller CPU-load og RTK-status (Fix Type og satellit-antal).
-* **Manuel Kontrol:** Hurtige adgangsknapper til at starte klipning, stoppe maskinen eller sende den direkte hjem til ladestationen.
-* **Køreplan (Schedule):** Intuitiv opsætning af klippe-skema med valg af specifikke ugedage og starttidspunkter.
-* **Live Videostream (WIP):** Klargjort til WebRTC-integration for at vise robottens kamera-feed og YOLO-baserede computer vision output direkte i appen.
+* **Live Mapping:** Real-time display of the robot's position, route, and heading on an interactive canvas.
+* **Telemetry & Metrics:** Monitoring of vital system data such as battery level, progress, main controller CPU load, and RTK status (fix type and satellite count).
+* **Manual Control:** Quick-access buttons to start mowing, stop the machine, or send it directly home to the charging station.
+* **Schedule:** Intuitive setup of mowing schedules with selected weekdays and start times.
+* **Live Video Feed (WIP):** Prepared for WebRTC integration to display the robot's camera feed and YOLO-based computer vision output directly in the app.
 
 ## 🛠️ Teknologistak
 
-* **Frontend:** [Flutter](https://flutter.dev/) & Dart (Understøtter Android, iOS, Windows, og Web)
+* **Frontend:** [Flutter](https://flutter.dev/) & Dart (supports Android, iOS, Windows, and Web)
 * **Backend Kommunikation:** WebSockets (JSON-baseret topic publishing/subscribing)
-* **Robot OS:** ROS 2 (Håndterer path planning, sensor fusion og motorstyring)
+* **Robot OS:** ROS 2 (handles path planning, sensor fusion, and motor control)
 
-## 🚀 Kom Godt I Gang
+## 🚀 Getting Started
 
-### Forudsætninger
-For at bygge og køre projektet skal du have følgende installeret:
-* [Flutter SDK](https://docs.flutter.dev/get-started/install) (Testet på channel stable)
-* Android Studio (til Android Emulator og SDK tools) eller en tilsluttet fysisk enhed
-* En aktiv ROS 2 bridge/websocket-server (hvis du ikke bruger den indbyggede simulator-tilstand)
+### Prerequisites
+To build and run the project, install the following:
+* [Flutter SDK](https://docs.flutter.dev/get-started/install) (tested on the stable channel)
+* Android Studio (for the Android Emulator and SDK tools) or a connected physical device
+* An active ROS 2 bridge/WebSocket server (unless you use the built-in simulator mode)
 
 ### Installation
 
-1. Klon sporet:
+1. Clone the repository:
    ```bash
    git clone [https://github.com/dit-brugernavn/ros_mower_app.git](https://github.com/dit-brugernavn/ros_mower_app.git)
    cd ros_mower_app
