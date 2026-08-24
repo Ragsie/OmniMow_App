@@ -69,8 +69,16 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   // Connect and open the dashboard
-  void _connectToRobot(String name, String ip) {
-    rosService.connect(name, ip); // Send both the name and IP address
+  Future<void> _connectToRobot(String name, String ip) async {
+    final connected = await rosService.connect(name, ip);
+    if (!mounted) return;
+
+    if (!connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Could not connect to the ROS 2 bridge.")),
+      );
+      return;
+    }
     
     Navigator.pushAndRemoveUntil(
       context,

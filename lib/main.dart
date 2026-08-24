@@ -52,7 +52,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    rosService.startSimulation();
   }
 
   @override
@@ -200,7 +199,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveFeedScreen())),
+                onPressed: rosService.isConnected
+                  ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveFeedScreen()))
+                  : null,
                 icon: const Icon(Icons.videocam),
                 label: const Text("Live Feed", style: TextStyle(fontSize: 16)),
                 style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
@@ -212,7 +213,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduleScreen())),
+                    onPressed: rosService.isConnected
+                      ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduleScreen()))
+                      : null,
                     icon: const Icon(Icons.calendar_month),
                     label: const Text("Schedule"),
                   ),
@@ -220,7 +223,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NerdMetricsScreen())),
+                    onPressed: rosService.isConnected
+                      ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NerdMetricsScreen()))
+                      : null,
                     icon: const Icon(Icons.analytics),
                     label: const Text("Metrics"),
                   ),

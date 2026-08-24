@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'notification_service.dart';
@@ -48,25 +46,29 @@ class RosService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- FORBINDELSE ---
-  void connect(String name, String ip) {
+  // --- CONNECTION ---
+  Future<bool> connect(String name, String ip) async {
     currentName = name;   
     currentIp = ip; 
     final url = 'ws://$ip:9090'; 
 
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(url));
+      final channel = WebSocketChannel.connect(Uri.parse(url));
+      await channel.ready;
+      _channel = channel;
       isConnected = true;
       notifyListeners();
 
-      _channel!.stream.listen(
+      channel.stream.listen(
         (data) => _handleIncomingMessage(jsonDecode(data)),
         onError: (_) { isConnected = false; notifyListeners(); },
         onDone: () { isConnected = false; notifyListeners(); },
       );
+      return true;
     } catch (e) {
       isConnected = false;
       notifyListeners();
+      return false;
     }
   }
 
@@ -191,6 +193,7 @@ class RosService extends ChangeNotifier {
     _channel?.sink.add(jsonEncode(msg));
   }
 
+  /*
   // --- SIMULATOR ---
   Timer? _simTimer;
   double _simHeading = 0.0;
@@ -200,7 +203,7 @@ class RosService extends ChangeNotifier {
     rtkStatus = "RTK Fixed";
     satellites = 24;
     cpuLoad = "Core 0: 42% | Core 1: 30%";
-    
+
     // Place the simulated mower near the center of the map on first start.
     if (currentX == 0 && currentY == 0) {
       currentX = 150;
@@ -208,23 +211,23 @@ class RosService extends ChangeNotifier {
     }
 
     _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      _simHeading += 0.05; 
+      _simHeading += 0.05;
       double speed = 2.0;
-      
+
       // Calculate the next simulated position.
       double newX = currentX + (speed * math.cos(_simHeading));
       double newY = currentY + (speed * math.sin(_simHeading));
-      
+
       updatePosition(newX, newY);
 
       batteryLevel = math.max(0, batteryLevel - 0.01);
       progress = math.min(100, progress + 0.05);
     });
   }
+  */
 
   @override
   void dispose() {
-    _simTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }

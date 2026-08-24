@@ -24,7 +24,7 @@ The project is designed to handle an advanced hardware stack in which a Worx Lan
 To build and run the project, install the following:
 * [Flutter SDK](https://docs.flutter.dev/get-started/install) (tested on the stable channel)
 * Android Studio (for the Android Emulator and SDK tools) or a connected physical device
-* An active ROS 2 bridge/WebSocket server (unless you use the built-in simulator mode)
+* An active ROS 2 bridge/WebSocket server connected to the mower
 
 ### Installation
 
@@ -41,8 +41,6 @@ To build and run the project, install the following:
    ```
 
 ## Implementation Notes
-
-* **Simulator:** The dashboard starts a local simulation automatically. It updates the mower position, battery level, progress, RTK status, satellite count, and CPU load without a live robot connection.
 * **ROS bridge:** A selected robot connects through `ws://<robot-ip>:9090`. Incoming messages are expected to use ROS topics such as `/battery_status`, `/rtk/status`, `/mower/status`, `/mower/metrics`, `/odom`, and `/gps/fix`.
 * **Commands:** Manual commands are published to `/mower/command`; schedules are published to `/mower/schedule` as JSON payloads.
 * **Notifications:** Notification preferences are stored locally with `shared_preferences` under the `notif_*` keys.
