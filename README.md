@@ -16,7 +16,7 @@ The project is designed to handle an advanced hardware stack in which a Worx Lan
 
 * **Frontend:** [Flutter](https://flutter.dev/) & Dart (supports Android, iOS, Windows, and Web)
 * **Backend Communication:** WebSockets (JSON-based topic publishing/subscribing)
-* **Robot OS:** ROS 2 (handles path planning, sensor fusion, and motor control)
+* **Robot OS:** [ROS 2 Mower](https://github.com/Ragsie/worx-ros2-mower) (handles path planning, sensor fusion, and motor control)
 
 ## 🚀 Getting Started
 
@@ -39,6 +39,36 @@ To build and run the project, install the following:
    flutter pub get
    flutter run
    ```
+
+### Build an APK Locally
+
+Anyone with the Flutter and Android prerequisites can build the Android APK locally:
+
+```bash
+flutter clean
+flutter pub get
+flutter build apk --release
+```
+
+The generated APK is written to:
+
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+For a quick development build, use `flutter build apk --debug` instead. A release APK should be signed with your own Android keystore before distribution through an app store or to production devices.
+
+### Build on GitHub
+
+The APK can also be built by GitHub Actions. Open the repository's **Actions** tab, run the Android build workflow, and download the generated APK from the workflow run's **Artifacts** section. This lets users build the app without installing Flutter locally.
+
+The exact workflow name and artifact name depend on the workflow configuration in the repository.
+
+## ROS 2 Mower Backend
+
+The app is intended to work with the [worx-ros2-mower](https://github.com/Ragsie/worx-ros2-mower) project. That repository contains the ROS 2 mower-side software and is the place to configure the robot, its sensors, navigation, and hardware controllers.
+
+The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:9090`. The ROS 2 bridge must be running and reachable from the phone or device before the dashboard can be opened.
 
 ## Implementation Notes
 * **ROS bridge:** A selected robot connects through `ws://<robot-ip>:9090`. Incoming messages are expected to use ROS topics such as `/battery_status`, `/rtk/status`, `/mower/status`, `/mower/metrics`, `/odom`, and `/gps/fix`.
