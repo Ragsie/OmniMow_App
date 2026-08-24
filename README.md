@@ -2,6 +2,8 @@
 
 A modern, fast control app built in Flutter for operating a custom autonomous robotic lawn mower. The app provides the primary interface between the user and the robot's ROS 2 backend through WebSockets.
 
+> **Alpha software:** This project is still in the alpha phase. Bugs, incomplete features, connection issues, and other unexpected behavior may occur. Use it for testing and development, and avoid relying on it for unattended production operation.
+
 The project is designed to handle an advanced hardware stack in which a Worx Landroid chassis has been rebuilt and upgraded with ESP32 microcontrollers, dual VESC controllers for precise motor control, and an RTK GNSS module for centimeter-level navigation.
 
 ## ✨ Features
