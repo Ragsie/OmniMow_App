@@ -24,7 +24,7 @@ class RobotApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 2. ValueListenableBuilder genbygger appen, når temaet skifter
+    // Rebuild the app whenever the selected theme changes.
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, currentMode, _) {
@@ -104,7 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 1. Live map preview (Bruger nu det nye kort- og sporingssystem)
+            // Live map preview using the current route history and position.
             SizedBox(
               height: 380,
               width: double.infinity,
@@ -146,6 +146,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }
             ),
             const SizedBox(height: 24),
+
+            // --- ROBOT STATUS ---
+            ListenableBuilder(
+              listenable: rosService,
+              builder: (context, _) {
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.info_outline, color: Colors.greenAccent),
+                    title: const Text("Current Action", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    subtitle: Text(
+                      rosService.mowerState.toUpperCase(),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                    ),
+                  ),
+                );
+              }
+            ),
+            const SizedBox(height: 16),
             
             // --- MANUAL CONTROL (START / STOP / HOME) ---
             const Text("Manual Control", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),

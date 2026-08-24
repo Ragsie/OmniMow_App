@@ -4,7 +4,7 @@ A modern, fast control app built in Flutter for operating a custom autonomous ro
 
 The project is designed to handle an advanced hardware stack in which a Worx Landroid chassis has been rebuilt and upgraded with ESP32 microcontrollers, dual VESC controllers for precise motor control, and an RTK GNSS module for centimeter-level navigation.
 
-## ✨ Funktioner
+## ✨ Features
 
 * **Live Mapping:** Real-time display of the robot's position, route, and heading on an interactive canvas.
 * **Telemetry & Metrics:** Monitoring of vital system data such as battery level, progress, main controller CPU load, and RTK status (fix type and satellite count).
@@ -12,10 +12,10 @@ The project is designed to handle an advanced hardware stack in which a Worx Lan
 * **Schedule:** Intuitive setup of mowing schedules with selected weekdays and start times.
 * **Live Video Feed (WIP):** Prepared for WebRTC integration to display the robot's camera feed and YOLO-based computer vision output directly in the app.
 
-## 🛠️ Teknologistak
+## 🛠️ Technology Stack
 
 * **Frontend:** [Flutter](https://flutter.dev/) & Dart (supports Android, iOS, Windows, and Web)
-* **Backend Kommunikation:** WebSockets (JSON-baseret topic publishing/subscribing)
+* **Backend Communication:** WebSockets (JSON-based topic publishing/subscribing)
 * **Robot OS:** ROS 2 (handles path planning, sensor fusion, and motor control)
 
 ## 🚀 Getting Started
@@ -32,6 +32,22 @@ To build and run the project, install the following:
    ```bash
    git clone [https://github.com/dit-brugernavn/ros_mower_app.git](https://github.com/dit-brugernavn/ros_mower_app.git)
    cd ros_mower_app
+   ```
+
+2. Fetch dependencies and run the app:
+   ```bash
+   flutter pub get
+   flutter run
+   ```
+
+## Implementation Notes
+
+* **Simulator:** The dashboard starts a local simulation automatically. It updates the mower position, battery level, progress, RTK status, satellite count, and CPU load without a live robot connection.
+* **ROS bridge:** A selected robot connects through `ws://<robot-ip>:9090`. Incoming messages are expected to use ROS topics such as `/battery_status`, `/rtk/status`, `/mower/status`, `/mower/metrics`, `/odom`, and `/gps/fix`.
+* **Commands:** Manual commands are published to `/mower/command`; schedules are published to `/mower/schedule` as JSON payloads.
+* **Notifications:** Notification preferences are stored locally with `shared_preferences` under the `notif_*` keys.
+* **Live video:** The WebRTC screen expects signaling on port `8889` at `/webrtc`. The signaling server and camera stream still need to be provided by the robot system.
+* **Position data:** The `/odom` and `/gps/fix` handlers are placeholders. Map coordinates must be mapped from the real ROS message format before live positioning is enabled.
 
 ---
 

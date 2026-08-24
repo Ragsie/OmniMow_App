@@ -14,25 +14,27 @@ class RosService extends ChangeNotifier {
   String currentName = "Mower Dashboard";
 
   // --- ROBOT STATE (Live data) ---
+  // State received from /mower/status.
+  String mowerState = "Standby";
   double batteryLevel = 100.0;
   double progress = 0.0;
   String rtkStatus = "Waiting for Fix...";
   String cpuLoad = "Unknown";
   int satellites = 0;
   
-  // --- NYE STATISTIK VARIABLER ---
+  // --- OPERATING STATISTICS ---
   double totalDistanceKm = 0.0;
   int totalMowingMinutes = 0;
   int chargeCycles = 0;
   
-  // --- KORT & POSITIONERING ---
+  // --- MAP AND POSITIONING ---
   double currentX = 0.0; 
   double currentY = 0.0; 
   
-  // Historik-liste over alle punkter robotten har kørt igennem (Sporet)
+  // History of every point visited by the mower.
   final List<Offset> pathHistory = [];
 
-  // Når der kommer en ny position fra robotten (f.eks. /odom eller /gps/fix)
+  // Called when a new position arrives from ROS, such as /odom or /gps/fix.
   void updatePosition(double x, double y) {
     currentX = x;
     currentY = y;
@@ -40,7 +42,7 @@ class RosService extends ChangeNotifier {
     notifyListeners();
   }
   
-  // Hvis du vil rydde sporet
+  // Clear the recorded route.
   void clearPath() {
     pathHistory.clear();
     notifyListeners();
@@ -87,8 +89,8 @@ class RosService extends ChangeNotifier {
       if (batteryLevel < 20.0 && !_hasWarnedBattery && allowBattery) {
         notificationService.showWarning(
           id: 1, 
-          title: "Lavt Batteri!", 
-          body: "Robotten har kun ${batteryLevel.toInt()}% strøm tilbage."
+          title: "Low Battery!",
+          body: "The mower has only ${batteryLevel.toInt()}% battery remaining."
         );
         _hasWarnedBattery = true;
       } else if (batteryLevel > 25.0) {
@@ -103,8 +105,8 @@ class RosService extends ChangeNotifier {
       if (rtkStatus != "Fix" && !_hasWarnedRtk && allowRtk) {
          notificationService.showWarning(
           id: 2, 
-          title: "GNSS Advarsel", 
-          body: "Mistet RTK Fix! Nuværende status: $rtkStatus."
+          title: "GNSS Warning",
+          body: "RTK fix lost. Current status: $rtkStatus."
         );
         _hasWarnedRtk = true;
       } else if (rtkStatus == "Fix") {
@@ -112,11 +114,12 @@ class RosService extends ChangeNotifier {
       }
     } else if (topic == '/mower/status') {
       final state = msg['state'] ?? '';
-      
+      mowerState = state;
+
       if (state == 'docking') {
         bool allowDocking = prefs.getBool('notif_docking') ?? false;
         if (!_hasWarnedDocking && allowDocking) {
-          notificationService.showWarning(id: 3, title: "Landroid", body: "Maskinen kører hjem mod dockingstationen.");
+          notificationService.showWarning(id: 3, title: "Landroid", body: "The mower is returning to the docking station.");
           _hasWarnedDocking = true;
         }
       } else {
@@ -126,7 +129,7 @@ class RosService extends ChangeNotifier {
       if (state == 'charging') {
         bool allowCharging = prefs.getBool('notif_charging') ?? false;
         if (!_hasWarnedCharging && allowCharging) {
-          notificationService.showWarning(id: 4, title: "Opladning", body: "Maskinen er nu i laderen og modtager strøm.");
+          notificationService.showWarning(id: 4, title: "Charging", body: "The mower is docked and charging.");
           _hasWarnedCharging = true;
         }
       } else {
@@ -136,7 +139,7 @@ class RosService extends ChangeNotifier {
       if (state == 'stuck') {
         bool allowStuck = prefs.getBool('notif_stuck') ?? true;
         if (!_hasWarnedStuck && allowStuck) {
-          notificationService.showWarning(id: 5, title: "KRITISK ADVARSEL", body: "Robotten sidder fast og har brug for hjælp!");
+          notificationService.showWarning(id: 5, title: "CRITICAL WARNING", body: "The mower is stuck and needs assistance!");
           _hasWarnedStuck = true;
         }
       } else {
@@ -148,7 +151,7 @@ class RosService extends ChangeNotifier {
       chargeCycles = msg['charge_cycles'] ?? 0;
       notifyListeners();
     } else if (topic == '/odom' || topic == '/gps/fix') {
-      // Hvis du modtager rigtige koordinater fra ROS 2:
+      // When real coordinates arrive from ROS 2:
       // double x = msg['x'];
       // double y = msg['y'];
       // updatePosition(x, y);
@@ -198,7 +201,7 @@ class RosService extends ChangeNotifier {
     satellites = 24;
     cpuLoad = "Core 0: 42% | Core 1: 30%";
     
-    // Sæt startposition midt på kortet, hvis den er 0,0
+    // Place the simulated mower near the center of the map on first start.
     if (currentX == 0 && currentY == 0) {
       currentX = 150;
       currentY = 150;
@@ -208,7 +211,7 @@ class RosService extends ChangeNotifier {
       _simHeading += 0.05; 
       double speed = 2.0;
       
-      // Beregn ny simuleret position
+      // Calculate the next simulated position.
       double newX = currentX + (speed * math.cos(_simHeading));
       double newY = currentY + (speed * math.sin(_simHeading));
       

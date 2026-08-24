@@ -22,11 +22,11 @@ class MowerMapPainter extends CustomPainter {
       ..color = Colors.red
       ..style = PaintingStyle.fill;
 
-    // 1. Tegn selve plæne-området (Baggrund)
+    // Draw the lawn area.
     final rect = Rect.fromLTWH(20, 20, size.width - 40, size.height - 40);
     canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(16)), paintGrassArea);
 
-    // 2. Tegn sporet (Hvor robotten har kørt)
+    // Draw the mower's route history.
     if (path.length > 1) {
       final pathPoints = Path();
       pathPoints.moveTo(path.first.dx, path.first.dy);
