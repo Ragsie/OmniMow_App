@@ -1,4 +1,4 @@
-name: Build All Platforms
+name: Build Flutter APK with Auto Version
 
 on:
   push:
@@ -7,11 +7,14 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Important: Fetches the entire history so we can count commits
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -25,17 +28,32 @@ jobs:
           channel: 'stable'
           flutter-version: '3.x'
           architecture: 'x64'
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
+      # --- AUTOMATIC VERSIONING STEP ---
+      - name: Update pubspec.yaml version
+        run: |
+          # Calculate new build number based on the number of git commits
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          
+          # Define your base version (e.g., 1.0.0)
+          VERSION_NAME="1.0.$BUILD_NUMBER"
+          
+          echo "Setting app version to: $VERSION_NAME+${BUILD_NUMBER}"
+          
+          # Automatically replace the version line in pubspec.yaml
+          sed -i "s/^version: .*/version: $VERSION_NAME+$BUILD_NUMBER/" pubspec.yaml
+
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Upload Android APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
+          name: ros-app-$BUILD_NUMBER
           path: build/app/outputs/flutter-apk/app-release.apk
 
   build-ios:
