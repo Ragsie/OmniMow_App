@@ -29,7 +29,7 @@ class RobotApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, currentMode, _) {
         return MaterialApp(
-          title: 'ROS 2 Mower',
+          title: 'OpenMow AI',
           debugShowCheckedModeBanner: false,
           theme: ThemeData.light(useMaterial3: true), // Light theme
           darkTheme: ThemeData.dark(useMaterial3: true), // Dark theme
