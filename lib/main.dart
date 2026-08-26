@@ -8,7 +8,7 @@ import 'screens/connection_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/nerd_metrics_screen.dart';
 
-// Global ValueNotifier til lyst/mørkt tema
+// Global ValueNotifier for light/dark theme
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 void main() async {
@@ -61,7 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Text(rosService.currentName),
         leading: IconButton(
           icon: const Icon(Icons.swap_horiz),
-          tooltip: 'Skift robot',
+          tooltip: 'Switch robot',
           onPressed: () {
             Navigator.push(
               context,
@@ -72,7 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            tooltip: 'Indstillinger',
+            tooltip: 'Settings',
             onPressed: () {
               Navigator.push(
                 context,
@@ -103,7 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 1. Live Kort Preview
+            // 1. Live Map Preview
             SizedBox(
               height: 380,
               width: double.infinity,
@@ -124,7 +124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 2. Batteri & Fremdrift
+            // 2. Battery & Progress
             ListenableBuilder(
               listenable: rosService,
               builder: (context, _) {
@@ -157,7 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 return Card(
                   child: ListTile(
                     leading: const Icon(Icons.info_outline, color: Colors.greenAccent),
-                    title: const Text("Aktuel Handling", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("Current Action", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     subtitle: Text(
                       rosService.mowerState.toUpperCase(),
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -168,8 +168,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 4. Manuel Kontrol (Start / Stop / Home)
-            const Text("Manuel Kontrol", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            // 4. Manual Control (Start / Stop / Home)
+            const Text("Manual Control", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -221,7 +221,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       MaterialPageRoute(builder: (_) => const ScheduleScreen()),
                     ),
                     icon: const Icon(Icons.calendar_month),
-                    label: const Text("Skema"),
+                    label: const Text("Schedule"),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -245,7 +245,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// Hjælpe-widget til statuskort på Dashboardet
+// Helper widget for status cards on the Dashboard
 class StatusCard extends StatelessWidget {
   final String title;
   final String value;

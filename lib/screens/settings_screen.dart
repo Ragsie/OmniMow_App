@@ -21,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _isCheckingUpdate = false;
 
-  String _appVersion = "Ukendt";
+  String _appVersion = "Unknown";
   String _buildNumber = "";
 
   @override
@@ -63,12 +63,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Indstillinger")),
+      appBar: AppBar(title: const Text("Settings")),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // --- TEMA INDSTILLINGER ---
-          const Text("Udseende", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          // --- THEME SETTINGS ---
+          const Text("Appearance", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: ValueListenableBuilder<ThemeMode>(
@@ -76,14 +76,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               builder: (context, mode, _) {
                 return ListTile(
                   leading: const Icon(Icons.palette),
-                  title: const Text("App Tema"),
+                  title: const Text("App Theme"),
                   trailing: DropdownButton<ThemeMode>(
                     value: mode,
                     underline: const SizedBox(),
                     items: const [
                       DropdownMenuItem(value: ThemeMode.system, child: Text("System (Auto)")),
-                      DropdownMenuItem(value: ThemeMode.light, child: Text("Lyst Tema")),
-                      DropdownMenuItem(value: ThemeMode.dark, child: Text("Mørkt Tema")),
+                      DropdownMenuItem(value: ThemeMode.light, child: Text("Light Theme")),
+                      DropdownMenuItem(value: ThemeMode.dark, child: Text("Dark Theme")),
                     ],
                     onChanged: (newMode) {
                       if (newMode != null) themeNotifier.value = newMode;
@@ -95,16 +95,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // --- NOTIFIKATIONS VALG ---
-          const Text("Vælg Notifikationer", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          // --- NOTIFICATION PREFERENCES ---
+          const Text("Choose Notifications", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Column(
               children: [
                 SwitchListTile(
                   secondary: const Icon(Icons.battery_alert, color: Colors.orange),
-                  title: const Text("Lavt batteri"),
-                  subtitle: const Text("Giv besked når batteriet er under 20%"),
+                  title: const Text("Low Battery"),
+                  subtitle: const Text("Alert when battery is below 20%"),
                   value: _notifBattery,
                   onChanged: (val) {
                     setState(() => _notifBattery = val);
@@ -114,8 +114,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.satellite_alt, color: Colors.redAccent),
-                  title: const Text("RTK / GNSS status"),
-                  subtitle: const Text("Advarsel hvis den mister sit Fix"),
+                  title: const Text("RTK / GNSS Status"),
+                  subtitle: const Text("Alert if RTK Fix is lost"),
                   value: _notifRtk,
                   onChanged: (val) {
                     setState(() => _notifRtk = val);
@@ -125,8 +125,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.home, color: Colors.blueAccent),
-                  title: const Text("Kører hjem / Docking"),
-                  subtitle: const Text("Når maskinen søger mod laderen"),
+                  title: const Text("Returning Home / Docking"),
+                  subtitle: const Text("When mower is heading to dock"),
                   value: _notifDocking,
                   onChanged: (val) {
                     setState(() => _notifDocking = val);
@@ -136,8 +136,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.bolt, color: Colors.amber),
-                  title: const Text("Opladningsstatus"),
-                  subtitle: const Text("Når maskinen er tilsluttet strøm"),
+                  title: const Text("Charging Status"),
+                  subtitle: const Text("When mower is charging"),
                   value: _notifCharging,
                   onChanged: (val) {
                     setState(() => _notifCharging = val);
@@ -147,8 +147,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.warning, color: Colors.red),
-                  title: const Text("Sidder fast"),
-                  subtitle: const Text("Kritisk advarsel hvis den holder stille og ikke kan komme videre"),
+                  title: const Text("Stuck Alert"),
+                  subtitle: const Text("Critical alert if mower is stuck and can't move"),
                   value: _notifStuck,
                   onChanged: (val) {
                     setState(() => _notifStuck = val);
@@ -160,8 +160,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // --- OM APPEN & OPDATERING ---
-          const Text("Om Appen", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          // --- ABOUT THE APP & UPDATES ---
+          const Text("About the App", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Column(
@@ -174,11 +174,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.link),
-                  title: const Text("Forbundet Robot"),
+                  title: const Text("Connected Robot"),
                   subtitle: Text(
                     rosService.isConnected
                         ? "${rosService.currentName} (${rosService.currentIp})"
-                        : "Ingen aktiv forbindelse",
+                        : "No active connection",
                   ),
                 ),
                 const Divider(height: 1),
@@ -194,7 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.system_update),
-                      label: Text(_isCheckingUpdate ? "Tjekker..." : "Søg efter opdatering nu"),
+                      label: Text(_isCheckingUpdate ? "Checking..." : "Check for Update Now"),
                       onPressed: _isCheckingUpdate
                           ? null
                           : () async {

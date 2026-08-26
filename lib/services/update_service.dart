@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 
 class UpdateService {
-  // Sørg for at repoName matcher dit app-repository på GitHub nøjagtigt
+  // Ensure repoName matches your app repository on GitHub exactly
   static const String repoOwner = "Ragsie";
   static const String repoName = "OpenMow-AI_app"; 
 
@@ -20,10 +20,10 @@ class UpdateService {
       final response = await http.get(url, headers: {'Accept': 'application/vnd.github.v3+json'});
 
       if (response.statusCode != 200) {
-        debugPrint("GitHub API fejl: ${response.statusCode} - ${response.body}");
+        debugPrint("GitHub API error: ${response.statusCode} - ${response.body}");
         if (showNoUpdateDialog && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Kunne ikke hente release (Status: ${response.statusCode})")),
+            SnackBar(content: Text("Could not fetch release (Status: ${response.statusCode})")),
           );
         }
         return;
@@ -31,9 +31,9 @@ class UpdateService {
 
       final releaseData = jsonDecode(response.body);
       final String tagName = releaseData['tag_name'] ?? '';
-      final String bodyText = releaseData['body'] ?? 'Ingen changelog angivet.';
+      final String bodyText = releaseData['body'] ?? 'No changelog provided.';
 
-      // Trækker build-nummeret ud (virker både for "v1.0.42-42" og "v1.0.42")
+      // Extract build number (works for both "v1.0.42-42" and "v1.0.42")
       int latestBuildNumber = 0;
       final dashMatch = RegExp(r'-(\d+)$').firstMatch(tagName);
       if (dashMatch != null) {
@@ -45,7 +45,7 @@ class UpdateService {
         }
       }
 
-      debugPrint("Lokal Build: $currentBuildNumber | GitHub Release Build: $latestBuildNumber (Tag: $tagName)");
+      debugPrint("Local Build: $currentBuildNumber | GitHub Release Build: $latestBuildNumber (Tag: $tagName)");
 
       if (latestBuildNumber > currentBuildNumber) {
         final List assets = releaseData['assets'] ?? [];
@@ -59,14 +59,14 @@ class UpdateService {
         }
       } else if (showNoUpdateDialog && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Du har allerede den nyeste version installeret!")),
+          const SnackBar(content: Text("You already have the latest version installed!")),
         );
       }
     } catch (e) {
-      debugPrint("Fejl ved tjek efter opdatering: $e");
+      debugPrint("Error checking for updates: $e");
       if (showNoUpdateDialog && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Fejl ved tjek: $e")),
+          SnackBar(content: Text("Error checking: $e")),
         );
       }
     }
@@ -77,7 +77,7 @@ class UpdateService {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text("Ny opdatering fundet ($version)"),
+        title: Text("New Update Found ($version)"),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,14 +92,14 @@ class UpdateService {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Senere"),
+            child: const Text("Later"),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               _downloadAndInstallApk(context, downloadUrl);
             },
-            child: const Text("Opdater nu"),
+            child: const Text("Update Now"),
           ),
         ],
       ),
@@ -109,7 +109,7 @@ class UpdateService {
   static Future<void> _downloadAndInstallApk(BuildContext context, String url) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.showSnackBar(
-      const SnackBar(content: Text("Downloader opdatering...")),
+      const SnackBar(content: Text("Downloading update...")),
     );
 
     try {
@@ -121,7 +121,7 @@ class UpdateService {
       await OpenFilex.open(file.path);
     } catch (e) {
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Fejl under installation: $e")),
+        SnackBar(content: Text("Error during installation: $e")),
       );
     }
   }

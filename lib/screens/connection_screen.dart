@@ -32,7 +32,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     super.initState();
     _loadRobots();
 
-  // Tjekker for GitHub opdatering med det samme appen starter
+  // Checks for GitHub update as soon as the app starts
     WidgetsBinding.instance.addPostFrameCallback((_) {
      UpdateService.checkForUpdates(context);
    });
