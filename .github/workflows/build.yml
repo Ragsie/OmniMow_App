@@ -1,10 +1,14 @@
 name: Build and Release OpenMow AI
 
 on:
-  workflow_dispatch: # manuel start
+  workflow_dispatch: # Only triggers manually to prevent unwanted micro-builds
 
 jobs:
-  build:
+  # ==========================================
+  # JOB 1: BUILD ANDROID APK & CREATE RELEASE
+  # ==========================================
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -13,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Fetches entire git history to count commits and generate release notes
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -32,25 +36,86 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Update pubspec.yaml version
+      - name: Update version in pubspec.yaml
         run: |
           BUILD_NUMBER=$(git rev-list --count HEAD)
           VERSION_NAME="1.0.$BUILD_NUMBER"
+          
+          echo "Setting version to: $VERSION_NAME+$BUILD_NUMBER"
           sed -i "s/^version: .*/version: $VERSION_NAME+$BUILD_NUMBER/" pubspec.yaml
+          
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Create Release and Upload APK
+      - name: Create GitHub Release and Upload APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}
           name: "OpenMow AI v${{ env.VERSION_NAME }} (Build ${{ env.BUILD_NUMBER }})"
-          generate_release_notes: true # adds changes to release log
+          generate_release_notes: true # Automatically appends all commit messages & changes to the release
           files: build/app/outputs/flutter-apk/app-release.apk
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================
+  # JOB 2: BUILD IOS & ATTACH TO SAME RELEASE
+  # ==========================================
+  build-ios:
+    name: Build iOS Package
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    needs: build-android # Waits for Android job to create the release first
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.x'
+          architecture: 'x64'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Calculate version
+        run: |
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          VERSION_NAME="1.0.$BUILD_NUMBER"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+
+      - name: Update version in pubspec.yaml
+        run: |
+          sed -i '' "s/^version: .*/version: $VERSION_NAME+$BUILD_NUMBER/" pubspec.yaml
+
+      - name: Build iOS (No Codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package iOS payload for sideloading
+        run: |
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload/
+          zip -r ../../../openmow-ai-ios-unsigned.zip Payload
+          cd ../../../
+
+      - name: Upload iOS archive to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}
+          files: |
+            openmow-ai-ios-unsigned.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
