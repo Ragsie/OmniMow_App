@@ -109,7 +109,7 @@ class UpdateService {
   static Future<void> _downloadAndInstallApk(BuildContext context, String url) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.showSnackBar(
-      const SnackBar(content: Text("Downloading update...")),
+      const SnackBar(content: Text("Downloader opdatering...")),
     );
 
     try {
@@ -118,11 +118,21 @@ class UpdateService {
       final file = File('${dir.path}/update.apk');
       await file.writeAsBytes(response.bodyBytes);
 
-      await OpenFilex.open(file.path);
+      // Åbn med eksplicit MIME-type til Android package installer
+      final result = await OpenFilex.open(
+        file.path,
+        type: "application/vnd.android.package-archive",
+      );
+
+      if (result.type != ResultType.done) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(content: Text("Kunne ikke åbne installationsfilen: ${result.message}")),
+        );
+      }
     } catch (e) {
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Error during installation: $e")),
+        SnackBar(content: Text("Fejl under hentning: $e")),
       );
     }
   }
-}
+} 
