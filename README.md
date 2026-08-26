@@ -25,8 +25,8 @@ The project is designed to handle an advanced hardware stack in which a Worx Lan
 ## 📥 Installation Guide
 
 Find step-by-step guides on how to install and set up the app on your mobile devices in our Wiki documentation:
-* [How to install on Android (Wiki Docs)](https://github.com/Ragsie/worx-ros2-mower/wiki) *(eller indsæt det direkte link til din Android-guide)*
-* [How to install on iPhone / iOS via Sideloadly (Wiki Docs)](https://github.com/Ragsie/worx-ros2-mower/wiki) *(eller indsæt det direkte link til din iOS-guide)*
+* [How to install on Android (Wiki Docs)]([https://github.com/Ragsie/worx-ros2-mower/wiki](https://github.com/Ragsie/ros_mower_app/wiki/Installation-on-andorid)) 
+* [How to install on iPhone / iOS via Sideloadly (Wiki Docs)]([https://github.com/Ragsie/worx-ros2-mower/wiki](https://github.com/Ragsie/ros_mower_app/wiki/Installation-on-ios))
 
 ### Automated Builds & Releases via GitHub Actions
 The repository is configured with automated CI/CD workflows via GitHub Actions. Every push to the main branch automatically compiles both the Android APK and the iOS app, manages auto-incrementing build numbers based on commits, and publishes them directly to the repository's **Releases** page.
