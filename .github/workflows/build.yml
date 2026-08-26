@@ -1,20 +1,22 @@
-name: Build Flutter APK with Auto Version
+name: Build and Release APK
 
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
     branches: [ "main", "master" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # Allow GitHub Actions to write/create releases in your repository
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Important: Fetches the entire history so we can count commits
+          fetch-depth: 0
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -33,28 +35,34 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # --- AUTOMATIC VERSIONING STEP ---
       - name: Update pubspec.yaml version
         run: |
-          # Calculate new build number based on the number of git commits
           BUILD_NUMBER=$(git rev-list --count HEAD)
-          
-          # Define your base version (e.g., 1.0.0)
           VERSION_NAME="1.0.$BUILD_NUMBER"
           
           echo "Setting app version to: $VERSION_NAME+${BUILD_NUMBER}"
-          
-          # Automatically replace the version line in pubspec.yaml
           sed -i "s/^version: .*/version: $VERSION_NAME+$BUILD_NUMBER/" pubspec.yaml
+          
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      # --- NEW STEP: CREATE GITHUB RELEASE ---
+      - name: Create Release and Upload APK
+        uses: softprops/action-gh-release@v2
         with:
-          name: ros-app-$BUILD_NUMBER
-          path: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}
+          name: "Mower App v${{ env.VERSION_NAME }} (Build ${{ env.BUILD_NUMBER }})"
+          body: |
+            Automated release built from commit: ${{ github.sha }}
+            - Includes latest updates for the ROS 2 Mower app.
+          files: build/app/outputs/flutter-apk/app-release.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-ios:
     runs-on: macos-latest
