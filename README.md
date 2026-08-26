@@ -1,5 +1,7 @@
 # ROS 2 Mower App 🚜
 
+[![Build and Release OpenMow AI](https://github.com/Ragsie/OpenMow-AI_app/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/OpenMow-AI_app/actions/workflows/build.yml)
+
 A modern, fast control app built in Flutter for operating a custom autonomous robotic lawn mower. The app provides the primary interface between the user and the robot's ROS 2 backend through WebSockets.
 
 > **Alpha software:** This project is still in the alpha phase. Bugs, incomplete features, connection issues, and other unexpected behavior may occur. Use it for testing and development, and avoid relying on it for unattended production operation.
