@@ -20,51 +20,18 @@ The project is designed to handle an advanced hardware stack in which a Worx Lan
 * **Backend Communication:** WebSockets (JSON-based topic publishing/subscribing)
 * **Robot OS:** [ROS 2 Mower](https://github.com/Ragsie/worx-ros2-mower) (handles path planning, sensor fusion, and motor control)
 
-## 🚀 Getting Started
+---
 
-### Prerequisites
-To build and run the project, install the following:
-* [Flutter SDK](https://docs.flutter.dev/get-started/install) (tested on the stable channel)
-* Android Studio (for the Android Emulator and SDK tools) or a connected physical device
-* An active ROS 2 bridge/WebSocket server connected to the mower
+## 📥 Installation Guide
 
-### Installation
+Find step-by-step guides on how to install and set up the app on your mobile devices in our Wiki documentation:
+* [How to install on Android (Wiki Docs)](https://github.com/Ragsie/worx-ros2-mower/wiki) *(eller indsæt det direkte link til din Android-guide)*
+* [How to install on iPhone / iOS via Sideloadly (Wiki Docs)](https://github.com/Ragsie/worx-ros2-mower/wiki) *(eller indsæt det direkte link til din iOS-guide)*
 
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/dit-brugernavn/ros_mower_app.git](https://github.com/dit-brugernavn/ros_mower_app.git)
-   cd ros_mower_app
-   ```
+### Automated Builds & Releases via GitHub Actions
+The repository is configured with automated CI/CD workflows via GitHub Actions. Every push to the main branch automatically compiles both the Android APK and the iOS app, manages auto-incrementing build numbers based on commits, and publishes them directly to the repository's **Releases** page.
 
-2. Fetch dependencies and run the app:
-   ```bash
-   flutter pub get
-   flutter run
-   ```
-
-### Build an APK Locally
-
-Anyone with the Flutter and Android prerequisites can build the Android APK locally:
-
-```bash
-flutter clean
-flutter pub get
-flutter build apk --release
-```
-
-The generated APK is written to:
-
-```text
-build/app/outputs/flutter-apk/app-release.apk
-```
-
-For a quick development build, use `flutter build apk --debug` instead. A release APK should be signed with your own Android keystore before distribution through an app store or to production devices.
-
-### Build on GitHub
-
-The APK can also be built by GitHub Actions. Open the repository's **Actions** tab, run the Android build workflow, and download the generated APK from the workflow run's **Artifacts** section. This lets users build the app without installing Flutter locally.
-
-The exact workflow name and artifact name depend on the workflow configuration in the repository.
+---
 
 ## ROS 2 Mower Backend
 
