@@ -1,14 +1,13 @@
-name: Build and Release APK
+name: Build and Release All Platforms
 
 on:
   push:
     branches: [ "main", "master" ]
 
 jobs:
-  build:
+  # --- JOB 1: ANDROID (APK) ---
+  build-android:
     runs-on: ubuntu-latest
-    
-    # Allow GitHub Actions to write/create releases in your repository
     permissions:
       contents: write
 
@@ -49,7 +48,6 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      # --- NEW STEP: CREATE GITHUB RELEASE ---
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2
         with:
@@ -57,18 +55,26 @@ jobs:
           name: "Mower App v${{ env.VERSION_NAME }} (Build ${{ env.BUILD_NUMBER }})"
           body: |
             Automated release built from commit: ${{ github.sha }}
-            - Includes latest updates for the ROS 2 Mower app.
+            - Includes latest updates for the ROS 2 Mower app (Android & iOS).
           files: build/app/outputs/flutter-apk/app-release.apk
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # --- JOB 2: IOS (IPA) ---
   build-ios:
     runs-on: macos-latest
+    permissions:
+      contents: write
+    # Makes the iOS job wait for the Android job to finish (or remove this line if they should run concurrently)
+    needs: build-android 
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -76,23 +82,35 @@ jobs:
           channel: 'stable'
           flutter-version: '3.x'
           architecture: 'x64'
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build iOS App
-        run: flutter build ios --release --no-codesign
-
-      - name: Package iOS build
+      - name: Calculate version
         run: |
-          cd build/ios/iphoneos
-          mkdir Payload
-          mv Runner.app Payload/
-          zip -r ../../../ios-app.zip Payload
-          cd ../../../
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          VERSION_NAME="1.0.$BUILD_NUMBER"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
-      - name: Upload iOS artifact
-        uses: actions/upload-artifact@v4
+      # Optional: If you have configured certificates (otherwise it uses --no-codesign)
+      - name: Build iOS IPA
+        run: |
+          if [ -n "${{ secrets.BUILD_CERTIFICATE_BASE64 }}" ]; then
+            flutter build ipa --release
+          else
+            flutter build ios --release --no-codesign
+            # Note: Using --no-codesign produces a .app bundle instead of a .ipa file. 
+            # But if you just want to include something in the release, you can package it or wait until certificates are ready.
+          fi
+
+      # Upload IPA to the exact same GitHub Release that Android just created
+      - name: Upload iOS to Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: release-ios
-          path: ios-app.zip
+          tag_name: v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}
+          files: |
+            build/ios/ipa/*.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
