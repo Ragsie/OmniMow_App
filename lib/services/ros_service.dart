@@ -1,130 +1,165 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_service.dart';
 
 class RosService extends ChangeNotifier {
   WebSocketChannel? _channel;
-  bool _isConnected = false;
+  bool isConnected = false;
 
-  // --- Mower Status & Cutter Telemetry ---
-  String _mowerState = "offline";
-  double _cutterAmps = 0.0;
-  bool _bladeActive = false;
+  String currentIp = "";
+  String currentName = "OpenMow AI";
 
-  // --- Operating Statistics & Telemetry ---
-  double _totalDistanceKm = 0.0;
-  int _operatingMinutes = 0;
-  int _chargeCycles = 0;
-  String _cpuLoad = "0%";
-  String _rtkStatus = "No Fix";
-  int _satellites = 0;
+  // --- ROBOT STATE ---
+  String mowerState = "offline";
+  double batteryLevel = 100.0;
+  double progress = 0.0;
+  String rtkStatus = "Waiting for Fix...";
+  String cpuLoad = "Unknown";
+  int satellites = 0;
 
-  // Getters
-  bool get isConnected => _isConnected;
-  String get mowerState => _mowerState;
-  double get cutterAmps => _cutterAmps;
-  bool get bladeActive => _bladeActive;
-  double get totalDistanceKm => _totalDistanceKm;
-  int get operatingMinutes => _operatingMinutes;
-  int get chargeCycles => _chargeCycles;
-  String get cpuLoad => _cpuLoad;
-  String get rtkStatus => _rtkStatus;
-  int get satellites => _satellites;
+  // --- CUTTER TELEMETRY ---
+  double cutterAmps = 0.0;
+  bool bladeActive = false;
 
-  void connect(String wsUrl) {
+  // --- OPERATING METRICS ---
+  double totalDistanceKm = 0.0;
+  int operatingMinutes = 0;
+  int chargeCycles = 0;
+
+  // --- POSITION / MAP ---
+  double currentX = 0.0;
+  double currentY = 0.0;
+  final List<Offset> pathHistory = [];
+
+  void updatePosition(double x, double y) {
+    currentX = x;
+    currentY = y;
+    pathHistory.add(Offset(x, y));
+    notifyListeners();
+  }
+
+  void clearPath() {
+    pathHistory.clear();
+    notifyListeners();
+  }
+
+  Future<bool> connect(String name, String ip) async {
+    currentName = name;
+    currentIp = ip;
+    final url = 'ws://$ip:9090';
+
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      _isConnected = true;
+      _channel = WebSocketChannel.connect(Uri.parse(url));
+      isConnected = true;
       notifyListeners();
 
-      // Subscribe to ROS topics
-      _subscribeToTopic('/mower/status', 'std_msgs/String');
-      _subscribeToTopic('/mower/metrics', 'std_msgs/String');
-      _subscribeToTopic('/rtk/status', 'std_msgs/String');
-
       _channel!.stream.listen(
-        (message) {
-          _handleIncomingMessage(message);
-        },
-        onError: (error) {
-          _isConnected = false;
+        (data) => _handleIncomingMessage(jsonDecode(data)),
+        onError: (_) {
+          isConnected = false;
           notifyListeners();
         },
         onDone: () {
-          _isConnected = false;
+          isConnected = false;
           notifyListeners();
         },
       );
+      return true;
     } catch (e) {
-      _isConnected = false;
+      isConnected = false;
       notifyListeners();
+      return false;
     }
   }
 
-  void _subscribeToTopic(String topic, String type) {
-    if (_channel != null && _isConnected) {
-      final subMsg = jsonEncode({
-        "op": "subscribe",
-        "topic": topic,
-        "type": type,
-      });
-      _channel!.sink.add(subMsg);
+  void _handleIncomingMessage(Map<String, dynamic> data) async {
+    final topic = data['topic'];
+    final msg = data['msg'];
+
+    if (topic == '/battery_status') {
+      batteryLevel = (msg['percentage'] as num? ?? 1.0).toDouble() * 100;
+    } else if (topic == '/rtk/status') {
+      rtkStatus = msg['status_string'] ?? 'No Fix';
+      satellites = msg['satellites'] ?? 0;
+    } else if (topic == '/mower/status') {
+      mowerState = msg['state'] ?? mowerState;
+      cutterAmps = (msg['cutter_amps'] as num?)?.toDouble() ?? 0.0;
+      bladeActive = msg['blade_active'] ?? false;
+    } else if (topic == '/mower/metrics') {
+      totalDistanceKm = (msg['distance_meters'] as num? ?? 0.0).toDouble() / 1000.0;
+      operatingMinutes = msg['mowing_minutes'] ?? operatingMinutes;
+      chargeCycles = msg['charge_cycles'] ?? chargeCycles;
+      cpuLoad = msg['cpu_load']?.toString() ?? cpuLoad;
     }
-  }
 
-  void _handleIncomingMessage(dynamic rawMessage) {
-    try {
-      final Map<String, dynamic> data = jsonDecode(rawMessage);
-      final String? topic = data['topic'];
-      final dynamic msg = data['msg'];
-
-      if (topic == '/mower/status') {
-        // Håndterer både standard streng og JSON payload
-        if (msg is Map<String, dynamic>) {
-          _parseMowerStatus(msg);
-        } else if (msg is String) {
-          try {
-            final parsedJson = jsonDecode(msg);
-            if (parsedJson is Map<String, dynamic>) {
-              _parseMowerStatus(parsedJson);
-            } else {
-              _mowerState = msg;
-            }
-          } catch (_) {
-            _mowerState = msg;
-          }
-        }
-        notifyListeners();
-      } else if (topic == '/mower/metrics') {
-        final Map<String, dynamic> metrics =
-            msg is String ? jsonDecode(msg) : msg;
-        _totalDistanceKm = (metrics['total_distance_km'] as num?)?.toDouble() ?? _totalDistanceKm;
-        _operatingMinutes = metrics['total_operating_minutes'] ?? _operatingMinutes;
-        _chargeCycles = metrics['charge_cycles'] ?? _chargeCycles;
-        _cpuLoad = metrics['cpu_load']?.toString() ?? _cpuLoad;
-        notifyListeners();
-      } else if (topic == '/rtk/status') {
-        final Map<String, dynamic> rtk = msg is String ? jsonDecode(msg) : msg;
-        _rtkStatus = rtk['fix_type'] ?? _rtkStatus;
-        _satellites = rtk['satellites'] ?? _satellites;
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint("Error parsing ROS message: $e");
-    }
-  }
-
-  void _parseMowerStatus(Map<String, dynamic> json) {
-    _mowerState = json['state']?.toString() ?? _mowerState;
-    _cutterAmps = (json['cutter_amps'] as num?)?.toDouble() ?? 0.0;
-    _bladeActive = json['blade_active'] ?? false;
-  }
-
-  void disconnect() {
-    _channel?.sink.close();
-    _isConnected = false;
     notifyListeners();
   }
+
+  void sendCommand(String command) {
+    if (!isConnected) return;
+    debugPrint("Command sent: $command");
+    final msg = {
+      'op': 'publish',
+      'topic': '/mower/command',
+      'msg': {'data': command}
+    };
+    _channel?.sink.add(jsonEncode(msg));
+  }
+
+  void saveSchedule(List<String> days, TimeOfDay time) {
+    if (!isConnected) return;
+    final scheduleData = {
+      'days': days,
+      'hour': time.hour,
+      'minute': time.minute,
+    };
+    final msg = {
+      'op': 'publish',
+      'topic': '/mower/schedule',
+      'msg': {'data': jsonEncode(scheduleData)}
+    };
+    _channel?.sink.add(jsonEncode(msg));
+  }
+
+  // Simulator
+  Timer? _simTimer;
+  double _simHeading = 0.0;
+
+  void startSimulation() {
+    isConnected = true;
+    rtkStatus = "RTK Fixed";
+    satellites = 24;
+    cpuLoad = "Core 0: 42% | Core 1: 30%";
+    bladeActive = true;
+    cutterAmps = 8.5;
+
+    if (currentX == 0 && currentY == 0) {
+      currentX = 150;
+      currentY = 150;
+    }
+
+    _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      _simHeading += 0.05;
+      updatePosition(
+        currentX + (2.0 * math.cos(_simHeading)),
+        currentY + (2.0 * math.sin(_simHeading)),
+      );
+      batteryLevel = math.max(0, batteryLevel - 0.005);
+      progress = math.min(100, progress + 0.02);
+    });
+  }
+
+  @override
+  void dispose() {
+    _simTimer?.cancel();
+    _channel?.sink.close();
+    super.dispose();
+  }
 }
+
+// Global instans til hele appen
+final rosService = RosService();
