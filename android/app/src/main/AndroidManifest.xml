@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Nødvendigt for at tilgå GitHub API og hente opdateringer -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    
+    <!-- Nødvendigt for at åbne og installere .apk-filer på Android 8+ -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
+    <application
+        android:label="OpenMow AI"
+        ...
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="OpenMow AI"

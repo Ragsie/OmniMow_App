@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'widgets/mower_map_painter.dart';
 import 'services/ros_service.dart';
 import 'services/notification_service.dart';
-import 'services/update_service.dart';
 import 'services/live_feed.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/connection_screen.dart';
@@ -52,11 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     rosService.startSimulation();
-
-    // Tjekker automatisk efter GitHub updates når skærmen er loadet
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      UpdateService.checkForUpdates(context);
-    });
+  
   }
 
   @override

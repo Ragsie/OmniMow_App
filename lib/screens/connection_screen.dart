@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ros_service.dart';
-import '../main.dart'; 
+import '../main.dart';
+import '../services/update_service.dart';
 
 class RobotDevice {
   final String name;
@@ -30,6 +31,11 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   void initState() {
     super.initState();
     _loadRobots();
+
+  // Tjekker for GitHub opdatering med det samme appen starter
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+     UpdateService.checkForUpdates(context);
+   });
   }
 
   Future<void> _loadRobots() async {

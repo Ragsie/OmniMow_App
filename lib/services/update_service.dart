@@ -7,23 +7,23 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 
 class UpdateService {
+  // Sørg for at repoName matcher dit app-repository på GitHub nøjagtigt
   static const String repoOwner = "Ragsie";
-  static const String repoName = "OpenMow-AI_app";
+  static const String repoName = "OpenMow-AI_app"; 
 
   static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateDialog = false}) async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
+      final int currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
 
-      final response = await http.get(
-        Uri.parse('https://api.github.com/repos/$repoOwner/$repoName/releases/latest'),
-        headers: {'Accept': 'application/vnd.github.v3+json'},
-      );
+      final url = Uri.parse('https://api.github.com/repos/$repoOwner/$repoName/releases/latest');
+      final response = await http.get(url, headers: {'Accept': 'application/vnd.github.v3+json'});
 
       if (response.statusCode != 200) {
+        debugPrint("GitHub API fejl: ${response.statusCode} - ${response.body}");
         if (showNoUpdateDialog && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Kunne ikke hente versionsinfo fra GitHub")),
+            SnackBar(content: Text("Kunne ikke hente release (Status: ${response.statusCode})")),
           );
         }
         return;
@@ -33,9 +33,19 @@ class UpdateService {
       final String tagName = releaseData['tag_name'] ?? '';
       final String bodyText = releaseData['body'] ?? 'Ingen changelog angivet.';
 
-      final buildRegex = RegExp(r'-(\d+)$');
-      final match = buildRegex.firstMatch(tagName);
-      final latestBuildNumber = match != null ? int.tryParse(match.group(1)!) ?? 0 : 0;
+      // Trækker build-nummeret ud (virker både for "v1.0.42-42" og "v1.0.42")
+      int latestBuildNumber = 0;
+      final dashMatch = RegExp(r'-(\d+)$').firstMatch(tagName);
+      if (dashMatch != null) {
+        latestBuildNumber = int.tryParse(dashMatch.group(1)!) ?? 0;
+      } else {
+        final dotMatch = RegExp(r'\.(\d+)$').firstMatch(tagName);
+        if (dotMatch != null) {
+          latestBuildNumber = int.tryParse(dotMatch.group(1)!) ?? 0;
+        }
+      }
+
+      debugPrint("Lokal Build: $currentBuildNumber | GitHub Release Build: $latestBuildNumber (Tag: $tagName)");
 
       if (latestBuildNumber > currentBuildNumber) {
         final List assets = releaseData['assets'] ?? [];
@@ -67,7 +77,7 @@ class UpdateService {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text("Ny opdatering ($version)"),
+        title: Text("Ny opdatering fundet ($version)"),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,7 +121,7 @@ class UpdateService {
       await OpenFilex.open(file.path);
     } catch (e) {
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Fejl under hentning af opdatering: $e")),
+        SnackBar(content: Text("Fejl under installation: $e")),
       );
     }
   }
