@@ -10,7 +10,7 @@ class UpdateService {
   static const String repoOwner = "Ragsie";
   static const String repoName = "OpenMow-AI_app";
 
-  static Future<void> checkForUpdates(BuildContext context) async {
+  static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateDialog = false}) async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
@@ -20,7 +20,14 @@ class UpdateService {
         headers: {'Accept': 'application/vnd.github.v3+json'},
       );
 
-      if (response.statusCode != 200) return;
+      if (response.statusCode != 200) {
+        if (showNoUpdateDialog && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Kunne ikke hente versionsinfo fra GitHub")),
+          );
+        }
+        return;
+      }
 
       final releaseData = jsonDecode(response.body);
       final String tagName = releaseData['tag_name'] ?? '';
@@ -40,9 +47,18 @@ class UpdateService {
         if (apkAsset != null && context.mounted) {
           _showUpdateDialog(context, tagName, bodyText, apkAsset['browser_download_url']);
         }
+      } else if (showNoUpdateDialog && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Du har allerede den nyeste version installeret!")),
+        );
       }
     } catch (e) {
       debugPrint("Fejl ved tjek efter opdatering: $e");
+      if (showNoUpdateDialog && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Fejl ved tjek: $e")),
+        );
+      }
     }
   }
 
@@ -92,7 +108,6 @@ class UpdateService {
       final file = File('${dir.path}/update.apk');
       await file.writeAsBytes(response.bodyBytes);
 
-      
       await OpenFilex.open(file.path);
     } catch (e) {
       scaffoldMessenger.showSnackBar(
