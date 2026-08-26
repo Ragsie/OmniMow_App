@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
 import '../services/ros_service.dart';
 
 class NerdMetricsScreen extends StatelessWidget {
@@ -11,8 +11,9 @@ class NerdMetricsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Nerd Metrics & Diagnostics"),
       ),
-      body: Consumer<RosService>(
-        builder: (context, rosService, child) {
+      body: ListenableBuilder(
+        listenable: rosService,
+        builder: (context, _) {
           final int hours = rosService.operatingMinutes ~/ 60;
           final int minutes = rosService.operatingMinutes % 60;
 
