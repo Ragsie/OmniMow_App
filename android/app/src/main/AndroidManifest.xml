@@ -1,14 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Nødvendigt for at tilgå GitHub API og hente opdateringer -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-    
-    <!-- Nødvendigt for at åbne og installere .apk-filer på Android 8+ -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
-    <application
-        android:label="OpenMow AI"
-        ...
+    <!-- Tilladelser til netværk, opdateringer og notifikationer -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="OpenMow AI"
         android:name="${applicationName}"
@@ -41,11 +37,8 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- Required to query activities that can process text -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
