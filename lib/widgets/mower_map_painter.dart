@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+
 class MowerMapPainter extends CustomPainter {
   final List<Offset> path;
   final Offset currentRobotPos;

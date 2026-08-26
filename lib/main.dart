@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'widgets/mower_map_painter.dart';
 import 'services/ros_service.dart';
-import 'screens/schedule_screen.dart';
+import 'services/notification_service.dart';
+import 'services/update_service.dart';
 import 'services/live_feed.dart';
+import 'screens/schedule_screen.dart';
 import 'screens/connection_screen.dart';
 import 'screens/settings_screen.dart';
-import 'services/notification_service.dart';
 import 'screens/nerd_metrics_screen.dart';
 
-// 1. A global variable that tracks the theme (starts in system theme)
+// Global ValueNotifier til lyst/mørkt tema
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 void main() async {
-  // Ensure Flutter is ready before starting background services
   WidgetsFlutterBinding.ensureInitialized();
-  await notificationService.init(); // Prepare notifications
+  await notificationService.init();
   
   runApp(const RobotApp());
 }
@@ -24,19 +24,18 @@ class RobotApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild the app whenever the selected theme changes.
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, currentMode, _) {
         return MaterialApp(
           title: 'OpenMow AI',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData.light(useMaterial3: true), // Light theme
-          darkTheme: ThemeData.dark(useMaterial3: true), // Dark theme
-          themeMode: currentMode, // Tells the app which theme to use
+          theme: ThemeData.light(useMaterial3: true),
+          darkTheme: ThemeData.dark(useMaterial3: true),
+          themeMode: currentMode,
           home: const ConnectionScreen(),
         );
-      }
+      },
     );
   }
 }
@@ -52,16 +51,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    rosService.startSimulation();
+
+    // Tjekker automatisk efter GitHub updates når skærmen er loadet
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.checkForUpdates(context);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(rosService.currentName), 
+        title: Text(rosService.currentName),
         leading: IconButton(
           icon: const Icon(Icons.swap_horiz),
-          tooltip: 'Switch Robot',
+          tooltip: 'Skift robot',
           onPressed: () {
             Navigator.push(
               context,
@@ -72,7 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
+            tooltip: 'Indstillinger',
             onPressed: () {
               Navigator.push(
                 context,
@@ -95,7 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               );
-            }
+            },
           ),
         ],
       ),
@@ -103,7 +108,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Live map preview using the current route history and position.
+            // 1. Live Kort Preview
             SizedBox(
               height: 380,
               width: double.infinity,
@@ -112,60 +117,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: ListenableBuilder(
                   listenable: rosService,
                   builder: (context, _) {
-                     return CustomPaint(
+                    return CustomPaint(
                       painter: MowerMapPainter(
                         path: rosService.pathHistory,
                         currentRobotPos: Offset(rosService.currentX, rosService.currentY),
                       ),
                     );
-                  }
+                  },
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            
-            // 2. Live progress and battery
+
+            // 2. Batteri & Fremdrift
             ListenableBuilder(
               listenable: rosService,
               builder: (context, _) {
                 return Row(
                   children: [
-                    Expanded(child: StatusCard(
-                      title: "Battery", 
-                      value: "${rosService.batteryLevel.toStringAsFixed(1)}%", 
-                      icon: Icons.battery_charging_full,
-                    )),
-                    Expanded(child: StatusCard(
-                      title: "Progress", 
-                      value: "${rosService.progress.toStringAsFixed(1)}%", 
-                      icon: Icons.grass,
-                    )),
+                    Expanded(
+                      child: StatusCard(
+                        title: "Battery",
+                        value: "${rosService.batteryLevel.toStringAsFixed(1)}%",
+                        icon: Icons.battery_charging_full,
+                      ),
+                    ),
+                    Expanded(
+                      child: StatusCard(
+                        title: "Progress",
+                        value: "${rosService.progress.toStringAsFixed(1)}%",
+                        icon: Icons.grass,
+                      ),
+                    ),
                   ],
                 );
-              }
+              },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            // --- ROBOT STATUS ---
+            // 3. Robot State tekst
             ListenableBuilder(
               listenable: rosService,
               builder: (context, _) {
                 return Card(
                   child: ListTile(
                     leading: const Icon(Icons.info_outline, color: Colors.greenAccent),
-                    title: const Text("Current Action", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("Aktuel Handling", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     subtitle: Text(
                       rosService.mowerState.toUpperCase(),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 );
-              }
+              },
             ),
-            const SizedBox(height: 16),
-            
-            // --- MANUAL CONTROL (START / STOP / HOME) ---
-            const Text("Manual Control", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            const SizedBox(height: 24),
+
+            // 4. Manuel Kontrol (Start / Stop / Home)
+            const Text("Manuel Kontrol", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -192,40 +201,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 24),
 
-            // --- MENU (LIVE FEED, SCHEDULE, METRICS) ---
+            // 5. Menu knapper
             const Text("Menu", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 8),
-            
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: rosService.isConnected
-                  ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveFeedScreen()))
-                  : null,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LiveFeedScreen()),
+                ),
                 icon: const Icon(Icons.videocam),
                 label: const Text("Live Feed", style: TextStyle(fontSize: 16)),
                 style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
               ),
             ),
             const SizedBox(height: 10),
-            
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: rosService.isConnected
-                      ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduleScreen()))
-                      : null,
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+                    ),
                     icon: const Icon(Icons.calendar_month),
-                    label: const Text("Schedule"),
+                    label: const Text("Skema"),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: rosService.isConnected
-                      ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NerdMetricsScreen()))
-                      : null,
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NerdMetricsScreen()),
+                    ),
                     icon: const Icon(Icons.analytics),
                     label: const Text("Metrics"),
                   ),
@@ -240,12 +250,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// Helper widget for status fields on the dashboard
+// Hjælpe-widget til statuskort på Dashboardet
 class StatusCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-  const StatusCard({super.key, required this.title, required this.value, required this.icon});
+
+  const StatusCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
