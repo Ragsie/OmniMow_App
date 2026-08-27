@@ -15,6 +15,18 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = file("release-key.jks")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "mysecretpassword"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "openmow"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "mysecretpassword"
+            }
+        }
+    }
+
     defaultConfig {
         multiDexEnabled = true
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
@@ -33,9 +45,9 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
