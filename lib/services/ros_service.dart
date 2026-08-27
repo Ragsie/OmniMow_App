@@ -125,36 +125,36 @@ class RosService extends ChangeNotifier {
   }
 
   // Simulator
-  Timer? _simTimer;
-  double _simHeading = 0.0;
+//  Timer? _simTimer;
+//  double _simHeading = 0.0;
 
-  void startSimulation() {
-    isConnected = true;
-    rtkStatus = "RTK Fixed";
-    satellites = 24;
-    cpuLoad = "Core 0: 42% | Core 1: 30%";
-    bladeActive = true;
-    cutterAmps = 8.5;
+ // void startSimulation() {
+ //   isConnected = true;
+ //   rtkStatus = "RTK Fixed";
+ //   satellites = 24;
+ //   cpuLoad = "Core 0: 42% | Core 1: 30%";
+ //   bladeActive = true;
+ //   cutterAmps = 8.5;
 
-    if (currentX == 0 && currentY == 0) {
-      currentX = 150;
-      currentY = 150;
-    }
+ //   if (currentX == 0 && currentY == 0) {
+ //     currentX = 150;
+ //     currentY = 150;
+ //   }
 
-    _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      _simHeading += 0.05;
-      updatePosition(
-        currentX + (2.0 * math.cos(_simHeading)),
-        currentY + (2.0 * math.sin(_simHeading)),
-      );
-      batteryLevel = math.max(0, batteryLevel - 0.005);
-      progress = math.min(100, progress + 0.02);
-    });
-  }
+  //  _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+  //    _simHeading += 0.05;
+  //    updatePosition(
+  //      currentX + (2.0 * math.cos(_simHeading)),
+  //      currentY + (2.0 * math.sin(_simHeading)),
+  //    );
+  //    batteryLevel = math.max(0, batteryLevel - 0.005);
+  //    progress = math.min(100, progress + 0.02);
+  //  });
+//  }
 
   @override
   void dispose() {
-    _simTimer?.cancel();
+   // _simTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
