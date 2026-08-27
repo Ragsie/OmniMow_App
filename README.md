@@ -18,9 +18,9 @@ The project is designed to handle an advanced hardware stack in which a Worx Lan
 
 ## 🛠️ Technology Stack
 
-* **Frontend:** [Flutter](https://flutter.dev/) & Dart (supports Android, iOS, Windows, and Web)
-* **Backend Communication:** WebSockets (JSON-based topic publishing/subscribing)
-* **Robot OS:** [ROS 2 Mower](https://github.com/Ragsie/worx-ros2-mower) (handles path planning, sensor fusion, and motor control)
+* **Frontend:** [Flutter](https://flutter.dev/) & Dart (supports Android, iOS, Windows, and Web).
+* **Backend Communication:** WebSockets (JSON-based topic publishing/subscribing).
+* **Robot OS:** [ROS 2 Mower](https://github.com/Ragsie/worx-ros2-mower) (handles path planning, sensor fusion, and motor control).
 
 ---
 
@@ -47,7 +47,7 @@ The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:909
 * **Notifications:** Notification preferences are stored locally with `shared_preferences` under the `notif_*` keys.
 * **Live video:** The WebRTC screen expects signaling on port `8889` at `/webrtc`. The signaling server and camera stream still need to be provided by the robot system.
 * **Position data:** The `/odom` and `/gps/fix` handlers are placeholders. Map coordinates must be mapped from the real ROS message format before live positioning is enabled.
-
+* **Built in app update on android, Ios will get a pop up
 ---
 
 ## ☕ Support The Project
