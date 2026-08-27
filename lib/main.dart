@@ -50,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    rosService.startSimulation();
+    //rosService.startSimulation(); // simulation kode
   
   }
 
