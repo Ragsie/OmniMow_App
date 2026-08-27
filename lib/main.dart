@@ -8,7 +8,7 @@ import 'screens/connection_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/nerd_metrics_screen.dart';
 
-// Global ValueNotifier for light/dark theme.
+// Global ValueNotifier for light/dark theme..
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 void main() async {
