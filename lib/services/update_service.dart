@@ -138,43 +138,44 @@ class UpdateService {
   }
 
 static Future<void> _downloadAndInstallApk(BuildContext context, String url) async {
-  final scaffoldMessenger = ScaffoldMessenger.of(context);
-  scaffoldMessenger.showSnackBar(
-    const SnackBar(content: Text("Downloader opdatering...")),
-  );
-
-  try {
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode != 200) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Fejl ved hentning: Status ${response.statusCode}")),
-      );
-      return;
-    }
-
-    final dir = await getExternalCacheDirectories().then((dirs) => dirs?.first) ?? await getTemporaryDirectory();
-    final file = File('${dir.path}/update.apk');
-
-    if (await file.exists()) {
-      await file.delete();
-    }
-
-    await file.writeAsBytes(response.bodyBytes, flush: true);
-
-    final result = await OpenFilex.open(
-      file.path,
-      type: "application/vnd.android.package-archive",
-    );
-
-    if (result.type != ResultType.done) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Fejl under åbning: ${result.message}")),
-      );
-    }
-  } catch (e) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.showSnackBar(
-      SnackBar(content: Text("Fejl: $e")),
+      const SnackBar(content: Text("Downloader opdatering...")),
     );
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(content: Text("Download fejlede med status: ${response.statusCode}")),
+        );
+        return;
+      }
+
+      // Gem altid i appens interne cache (kræver ingen MANAGE_EXTERNAL_STORAGE rettighed)
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/update.apk');
+
+      if (await file.exists()) {
+        await file.delete();
+      }
+
+      await file.writeAsBytes(response.bodyBytes, flush: true);
+
+      final result = await OpenFilex.open(
+        file.path,
+        type: "application/vnd.android.package-archive",
+      );
+
+      if (result.type != ResultType.done) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(content: Text("Fejl under åbning: ${result.message}")),
+        );
+      }
+    } catch (e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text("Fejl under installation: $e")),
+      );
+    }
   }
-}
 }
