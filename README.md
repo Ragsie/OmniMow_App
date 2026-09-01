@@ -50,6 +50,27 @@ The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:909
 * **Built in app update on android, Ios will get a pop up.
 ---
 
+Acknowledgements & Credits
+As OpenMow AI is built to support and empower the amazing open-source and DIY robotics community, and we now accept donations, we would like to extend a huge thank you to the projects, libraries, and developers that have made this app possible. This project truly stands on the shoulders of giants:
+
+Core Platforms & Projects
+ROS 2 (Robot Operating System) – The powerful middleware framework that manages the robot's logic, sensors, and actuators.
+Flutter & Dart – Google's incredible UI toolkit, enabling us to deliver a fast, modern, and responsive user interface for both Android and iOS.
+Hardware & Computer Vision
+VESC (Benjamin Vedder) – For the essential and widely-used open-source motor control system that delivers precise wheel and cutter motor control along with detailed telemetry.
+micro-ROS – Enabling the seamless integration of microcontrollers (like the ESP32) directly with the robot's ROS 2 backend.
+YOLO (You Only Look Once) – The state-of-the-art computer vision model that enables real-time, intelligent object detection directly within the robot's live video stream.
+Essential Flutter Packages (Dependencies)
+A special thanks to the developers of these open-source packages, which are critical to the application's core functionality:
+
+flutter_webrtc – Enables ultra-low latency live video streaming directly from the robot's camera.
+open_filex – Ensures the app can securely and seamlessly trigger downloaded APK updates on modern Android versions.
+web_socket_channel – Powers the robust WebSocket bridge connecting the mobile frontend to the robot's ROS 2 telemetry and manual controls.
+flutter_local_notifications – Handles the local push notification system on mobile devices, alerting users about low battery, lost RTK connections, or when the mower gets stuck.
+Distribution & Tooling
+Sideloadly – Simplifies sideloading and auto-updating the app on iOS devices for users without a paid Apple Developer account.
+GitHub Actions – Automates our entire CI/CD pipeline, signing release APKs, and auto-generating changelogs from commit histories.
+
 ## ☕ Support The Project
 If this project helped you or inspired your own build, consider buying me a cup of coffee. It would make my day and support me in developing more!
 please note that this project is, and will always remain, **100% free and open-source** under the **GNU GPLv3 License** in accordance with the licenses of our upstream dependencies.
