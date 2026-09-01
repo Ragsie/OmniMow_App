@@ -52,6 +52,9 @@ The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:909
 
 ## ☕ Support The Project
 If this project helped you or inspired your own build, consider buying me a cup of coffee. It would make my day and support me in developing more!
+please note that this project is, and will always remain, **100% free and open-source** under the **GNU GPLv3 License** in accordance with the licenses of our upstream dependencies.
+
+* **Buy Me A coffie:**  https://buymeacoffee.com/Ragsie
 
 | Coin | QR | Address |
 | :-- | :--- | :---: |
