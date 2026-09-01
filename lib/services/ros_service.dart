@@ -10,7 +10,7 @@ class RosService extends ChangeNotifier {
   bool isConnected = false;
 
   String currentIp = "";
-  String currentName = "OpenMow AI";
+  String currentName = "NuroMow AI";
 
   // --- ROBOT STATE ---
   String mowerState = "offline";

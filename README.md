@@ -1,6 +1,6 @@
-# ROS 2 Mower App 🚜
+# NuroMow AI 🚜
 
-[![Build and Release OpenMow AI](https://github.com/Ragsie/OpenMow-AI_app/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/OpenMow-AI_app/actions/workflows/build.yml)
+[![Build and Release NuroMow AI](https://github.com/Ragsie/NuroMow-AI_app/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/NuroMow-AI_app/actions/workflows/build.yml)
 
 A modern, fast control app built in Flutter for operating a custom autonomous robotic lawn mower. The app provides the primary interface between the user and the robot's ROS 2 backend through WebSockets.
 
@@ -51,7 +51,7 @@ The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:909
 ---
 
 Acknowledgements & Credits
-As OpenMow AI is built to support and empower the amazing open-source and DIY robotics community, and we now accept donations, we would like to extend a huge thank you to the projects, libraries, and developers that have made this app possible. This project truly stands on the shoulders of giants:
+As NuroMow AI is built to support and empower the amazing open-source and DIY robotics community, and we now accept donations, we would like to extend a huge thank you to the projects, libraries, and developers that have made this app possible. This project truly stands on the shoulders of giants:
 
 Core Platforms & Projects
 ROS 2 (Robot Operating System) – The powerful middleware framework that manages the robot's logic, sensors, and actuators.

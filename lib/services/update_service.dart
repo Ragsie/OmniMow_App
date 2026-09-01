@@ -9,7 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 class UpdateService {
   static const String repoOwner = "Ragsie";
-  static const String repoName = "OpenMow-AI_app";
+  static const String repoName = "NuroMow-AI_app";
 
   static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateDialog = false}) async {
     try {

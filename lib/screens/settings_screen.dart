@@ -168,7 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.info_outline),
-                  title: const Text("OpenMow AI"),
+                  title: const Text("NuroMow AI"),
                   subtitle: Text("Version: $_appVersion${_buildNumber.isNotEmpty ? ' (Build $_buildNumber)' : ''}"),
                 ),
                 const Divider(height: 1),
