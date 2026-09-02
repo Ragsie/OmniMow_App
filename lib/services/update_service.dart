@@ -12,7 +12,7 @@ class UpdateService {
   // IMPORTANT: Ensure this matches your GitHub username and repository name!
   // =========================================================================
   static const String repoOwner = "Ragsie";
-  static const String repoName = "OmniMow"; // Your GitHub repository name
+  static const String repoName = "OmniMow_App"; // Your GitHub repository name
 
   static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateDialog = false}) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -44,7 +44,7 @@ class UpdateService {
           scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text("API Error (${response.statusCode}). Is the repo name correct?"),
-              backgroundColor: Colors.redWithOpacity(0.8) ?? Colors.redAccent,
+              backgroundColor: Colors.red.withOpacity(0.8),
               duration: const Duration(seconds: 5),
             ),
           );
@@ -75,7 +75,7 @@ class UpdateService {
 
       // Smart parsing of version and build number.
       // If the tag_name is "latest" (used by our rolling development build), we extract the
-      // actual version and build number from the release name: "NuroMow Latest Build (v2.1.0-64)"
+      // actual version and build number from the release name: "OmniMow Latest Build (v2.1.0-64)"
       String targetString = tagName;
       if (tagName == 'latest' || !RegExp(r'\d').hasMatch(tagName)) {
         targetString = releaseName;
@@ -143,7 +143,7 @@ class UpdateService {
       } else if (showNoUpdateDialog && context.mounted) {
         scaffoldMessenger.showSnackBar(
           const SnackBar(
-            content: Text("NuroMow is up to date! You have the latest version."),
+            content: Text("OmniMow is up to date! You have the latest version."),
             backgroundColor: Colors.green,
           ),
         );
