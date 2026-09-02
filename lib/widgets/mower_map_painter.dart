@@ -8,7 +8,7 @@ class MowerMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Definer pensler til tegning
+    // 1. Define the drawing brushes
     final paintGrassArea = Paint()
       ..color = Colors.green.shade800
       ..style = PaintingStyle.fill;
@@ -23,11 +23,11 @@ class MowerMapPainter extends CustomPainter {
       ..color = Colors.red
       ..style = PaintingStyle.fill;
 
-    // 2. Tegn selve plæne-området (Baggrund)
+    // 2. Draw the lawn area itself (background)
     final rect = Rect.fromLTWH(20, 20, size.width - 40, size.height - 40);
     canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(16)), paintGrassArea);
 
-    // 3. Tegn køresporet (Historik over kørte punkter)
+    // 3. Draw the driving path (history of traversed points)
     if (path.length > 1) {
       final pathPoints = Path();
       pathPoints.moveTo(path.first.dx, path.first.dy);
@@ -37,7 +37,7 @@ class MowerMapPainter extends CustomPainter {
       canvas.drawPath(pathPoints, paintPath);
     }
 
-    // 4. Tegn robotten som en rød lysende prik
+    // 4. Draw the robot as a red glowing dot
     canvas.drawCircle(currentRobotPos, 8.0, paintRobot);
   }
 

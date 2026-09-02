@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart'; // Sikrer at Color-klassen er tilgængelig
+import 'package:flutter/material.dart'; // Ensures the Color class is available.
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -12,7 +12,7 @@ class NotificationService {
   Future<void> init() async {
     if (_isInitialized) return;
 
-    // Bruger det indbyggede standard-appikon til notifikations-hovedet for at undgå opstartsfejl
+    // Uses the default app icon for the notification channel to avoid startup issues.
     final AndroidInitializationSettings androidSettings =
         const AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -20,10 +20,10 @@ class NotificationService {
       android: androidSettings,
     );
 
-    // Initialiserer det lokale plugin med navngiven settings-parameter
+    // Initializes the local plugin with the configured settings.
     await _notificationsPlugin.initialize(settings: initSettings);
 
-    // Anmod om tilladelse til notifikationer på Android 13+
+    // Requests notification permission on Android 13+
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
@@ -43,7 +43,7 @@ class NotificationService {
 
     final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-    // Viser notifikationen med korrekte navngivne parametre
+    // Shows the notification with the correct named parameters.
     await _notificationsPlugin.show(
       id: id,
       title: title,

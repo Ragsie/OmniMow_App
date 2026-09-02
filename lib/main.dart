@@ -51,7 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     // Start the offline simulator. Remove or comment this out when connecting to the real robot.
-    rosService.startSimulation();
+    //rosService.startSimulation();
   }
 
   @override

@@ -60,7 +60,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
         }
       };
 
-      // Forbinder WebRTC-signalering til port 8889 på robottens FastAPI/MediaMTX service
+      // Connects the WebRTC signaling to port 8889 on the robot's FastAPI/MediaMTX service
       final signalingUrl = 'ws://$robotIp:8889/webrtc';
       _signalingChannel = WebSocketChannel.connect(Uri.parse(signalingUrl));
 

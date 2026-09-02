@@ -115,7 +115,7 @@ class AboutCreditsDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => _launchURL('https://buymeacoffee.com/ragsie'), // Indsæt dit link her!
+          onPressed: () => _launchURL('https://buymeacoffee.com/ragsie'), // Insert your link here!
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

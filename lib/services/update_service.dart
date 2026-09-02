@@ -20,7 +20,7 @@ class UpdateService {
       final response = await http.get(url, headers: {'Accept': 'application/vnd.github.v3+json'});
 
       if (response.statusCode != 200) {
-        debugPrint("GitHub API fejl: ${response.statusCode}");
+        debugPrint("GitHub API error: ${response.statusCode}");
         if (showNoUpdateDialog && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Could not fetch release (Status: ${response.statusCode})")),
@@ -34,7 +34,7 @@ class UpdateService {
       final String bodyText = releaseData['body'] ?? 'No changelog provided.';
       final String releaseHtmlUrl = releaseData['html_url'] ?? 'https://github.com/$repoOwner/$repoName/releases/latest';
 
-      // Trækker build-nummeret ud (virker både for "v1.0.42-42" og "v1.0.42")
+      // Extracts the build number from both "v1.0.42-42" and "v1.0.42"
       int latestBuildNumber = 0;
       final dashMatch = RegExp(r'-(\\d+)$').firstMatch(tagName);
       if (dashMatch != null) {
@@ -143,11 +143,11 @@ class UpdateService {
 
     try {
       final response = await http.get(Uri.parse(url));
-      final dir = await getTemporaryDirectory(); // Gemmer sikkert i appens cache-mappe
+      final dir = await getTemporaryDirectory(); // Safely stores the file in the app cache directory
       final file = File('${dir.path}/update.apk');
       await file.writeAsBytes(response.bodyBytes);
 
-      // Starter Android pakkeinstallationen via OpenFilex
+      // Starts the Android package installation via OpenFilex
       final result = await OpenFilex.open(
         file.path,
         type: "application/vnd.android.package-archive",
@@ -160,7 +160,7 @@ class UpdateService {
       }
     } catch (e) {
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Fejl under installation: $e")),
+        SnackBar(content: Text("Installation error: $e")),
       );
     }
   }

@@ -11,7 +11,7 @@ class NerdMetricsScreen extends StatelessWidget {
       body: ListenableBuilder(
         listenable: rosService,
         builder: (context, _) {
-          // Udregner timer og minutter pænt baseret på den samlede driftstid
+          // Calculates hours and minutes neatly based on total operating time.
           final int hours = rosService.operatingMinutes ~/ 60;
           final int minutes = rosService.operatingMinutes % 60;
 
@@ -67,6 +67,46 @@ class NerdMetricsScreen extends StatelessWidget {
                                 : (rosService.cutterAmps >= 12.0 ? Colors.orangeAccent : Colors.greenAccent),
                           ),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // --- BATTERY SYSTEM ---
+              const Text(
+                "Battery System",
+                style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.bolt, color: Colors.amber),
+                      title: const Text("Battery Voltage"),
+                      trailing: Text(
+                        "${rosService.batteryVoltage.toStringAsFixed(1)} V",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.electric_meter, color: Colors.blueAccent),
+                      title: const Text("Battery Current"),
+                      trailing: Text(
+                        "${rosService.batteryCurrent.toStringAsFixed(1)} A",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.thermostat, color: Colors.orangeAccent),
+                      title: const Text("Battery Temperature"),
+                      trailing: Text(
+                        "${rosService.batteryTemp.toStringAsFixed(1)} °C",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
                   ],

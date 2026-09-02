@@ -22,7 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _isCheckingUpdate = false;
 
-  String _appVersion = "Ukendt";
+  String _appVersion = "Unknown";
   String _buildNumber = "";
 
   @override

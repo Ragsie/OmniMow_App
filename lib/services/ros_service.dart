@@ -32,24 +32,24 @@ class RosService extends ChangeNotifier {
   double driveMotorsCurrent = 0.0;
   double cpuTemp = 0.0;
 
-  // --- STATISTICS ---
+  // --- NEW STATISTICS VARIABLES ---
   double totalDistanceKm = 0.0;
   int totalMowingMinutes = 0;
-  int operatingMinutes = 0; // For backward compatibility with screens
+  int operatingMinutes = 0; // for compatibility with NerdMetricsScreen
   int chargeCycles = 0;
 
-  // --- KORT & POSITIONERING ---
+  // --- MAP & POSITIONING ---
   double currentX = 0.0;
   double currentY = 0.0;
 
-  // Historik-liste over alle punkter robotten har kørt igennem (Sporet)
+  // History list of all points the robot has driven through (the trail)
   final List<Offset> pathHistory = [];
 
-  // GPS-referencepunkter til lokal projektion
+  // For GPS Projection to Local Meters
   double? _referenceLat;
   double? _referenceLon;
 
-  // Variabler til at undgå notifikations-spam
+  // Variables to avoid spam
   bool _hasWarnedBattery = false;
   bool _hasWarnedRtk = false;
   bool _hasWarnedDocking = false;
@@ -64,7 +64,7 @@ class RosService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Projekterer Lat/Lon geografiske koordinater til lokale pixels på kortet
+  // GPS Projection helper to convert Lat/Lon to Local Canvas offsets
   void updateGPSPosition(double lat, double lon) {
     if (lat == 0.0 || lon == 0.0) return;
 
@@ -73,19 +73,19 @@ class RosService extends ChangeNotifier {
       _referenceLon = lon;
     }
 
-    // Enkel flad projektion til lokale meter
+    // Simple equirectangular projection to local meters
     double latRad = lat * math.pi / 180.0;
     double dy = (lat - _referenceLat!) * 111111.0;
     double dx = (lon - _referenceLon!) * 111111.0 * math.cos(latRad);
 
-    // Centrer på et 300x300 canvas område (midtpunkt 150, 150)
+    // Map to canvas coordinates centered around 150, 150
     double mapX = 150.0 + dx;
-    double mapY = 150.0 - dy; // Inverter Y fordi canvas Y går nedad
+    double mapY = 150.0 - dy; // Invert Y because canvas Y goes down
 
     updatePosition(mapX, mapY);
   }
 
-  // Rydder kørte spor
+  // Clear path history
   void clearPath() {
     pathHistory.clear();
     _referenceLat = null;
@@ -93,11 +93,12 @@ class RosService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- FORBINDELSE ---
+  // --- CONNECTION ---
   void connect(String name, String ip) {
     currentName = name;  
     currentIp = ip;
-    final url = 'ws://$ip:8000/ws'; // FastAPI WebSocket endpoint på port 8000
+    // Updated to Port 8000 and /ws endpoint for the optimized FastAPI backend
+    final url = 'ws://\$ip:8000/ws';
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(url));
@@ -115,7 +116,7 @@ class RosService extends ChangeNotifier {
     }
   }
 
-  // Map state codes from the API dictionary to readable English text
+  // Helper to map state code to human-readable text
   String _mapStateCodeToString(int code) {
     switch (code) {
       case 0:
@@ -133,13 +134,13 @@ class RosService extends ChangeNotifier {
       case 6:
         return "BLADE BLOCKED";
       case 7:
-        return "SEARCHING EDGE";
+        return "SEEKING EDGE";
       default:
         return "Unknown state ($code)";
     }
   }
 
-  // --- PARSING AF INDKOMMENDE JSON PAYLOAD ---
+  // --- MESSAGE PARSING ---
   void _handleIncomingMessage(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -149,12 +150,13 @@ class RosService extends ChangeNotifier {
       double lat = (gps['lat'] as num? ?? 0.0).toDouble();
       double lon = (gps['lon'] as num? ?? 0.0).toDouble();
 
+      // Update coordinates dynamically on the map
       updateGPSPosition(lat, lon);
 
       rtkStatus = gps['rtk_text'] ?? gps['status'] ?? 'No Fix';
       satellites = gps['satellites'] as int? ?? 0;
 
-      // RTK Advarsel
+      // Check RTK Warning settings
       bool allowRtk = prefs.getBool('notif_rtk') ?? true;
       int rtkCode = gps['rtk_code'] as int? ?? 0;
       if (rtkCode != 3 && !_hasWarnedRtk && allowRtk) {
@@ -178,13 +180,13 @@ class RosService extends ChangeNotifier {
       batteryTemp = (battery['temperature_celsius'] as num? ?? 0.0).toDouble();
       chargeCycles = battery['charge_cycles'] as int? ?? 0;
 
-      // Battery alert below 20%
+      // Check Low Battery settings
       bool allowBattery = prefs.getBool('notif_battery') ?? true;
       if (batteryLevel < 20.0 && !_hasWarnedBattery && allowBattery) {
         notificationService.showWarning(
           id: 1,
           title: "Low Battery!",
-          body: "OpenMow AI only has ${batteryLevel.toInt()}% battery left."
+          body: "NuroMow has only ${batteryLevel.toInt()}% power remaining."
         );
         _hasWarnedBattery = true;
       } else if (batteryLevel > 25.0) {
@@ -192,44 +194,45 @@ class RosService extends ChangeNotifier {
       }
     }
 
-    // 3. Parse System State
+    // 3. Parse system state
     if (data.containsKey('state')) {
       int stateCode = data['state'] as int? ?? 0;
       mowerState = _mapStateCodeToString(stateCode);
 
-      // State 4 = STUCK / SIDDER FAST
+      // Check State-based warnings
+      // State 4 = STUCK
       bool allowStuck = prefs.getBool('notif_stuck') ?? true;
       if (stateCode == 4 && !_hasWarnedStuck && allowStuck) {
         notificationService.showWarning(
           id: 5,
           title: "CRITICAL WARNING",
-          body: "The mower is stuck and needs help!"
+          body: "The robot is stuck and needs assistance!"
         );
         _hasWarnedStuck = true;
       } else if (stateCode != 4) {
         _hasWarnedStuck = false;
       }
 
-      // State 2 = DOCKING / SØGER DOCK
+      // State 2 = DOCKING / RETURNING TO DOCK
       bool allowDocking = prefs.getBool('notif_docking') ?? false;
       if (stateCode == 2 && !_hasWarnedDocking && allowDocking) {
         notificationService.showWarning(
           id: 3,
-          title: "Landroid",
-          body: "The mower is returning to the charging dock."
+          title: "Returning Home",
+          body: "The machine is driving back to the docking station."
         );
         _hasWarnedDocking = true;
       } else if (stateCode != 2) {
         _hasWarnedDocking = false;
       }
 
-      // State 3 = CHARGING / OPLADER
+      // State 3 = CHARGING
       bool allowCharging = prefs.getBool('notif_charging') ?? false;
       if (stateCode == 3 && !_hasWarnedCharging && allowCharging) {
         notificationService.showWarning(
           id: 4,
           title: "Charging",
-          body: "The mower is now on the dock and charging."
+          body: "The machine is now in the charger and receiving power."
         );
         _hasWarnedCharging = true;
       } else if (stateCode != 3) {
@@ -256,10 +259,10 @@ class RosService extends ChangeNotifier {
 
       double runtimeHours = (stats['total_runtime_hours'] as num? ?? 0.0).toDouble();
       totalMowingMinutes = (runtimeHours * 60).toInt();
-      operatingMinutes = totalMowingMinutes;
+      operatingMinutes = totalMowingMinutes; // For backward compatibility
     }
 
-    // 6. Parse System CPU Diagnostics (Orange Pi 5 Ultra)
+    // 6. Parse System CPU Diagnostics
     if (data.containsKey('system')) {
       final sys = data['system'] as Map<String, dynamic>;
       cpuTemp = (sys['cpu_temp_celsius'] as num? ?? 0.0).toDouble();
@@ -274,15 +277,15 @@ class RosService extends ChangeNotifier {
   void sendCommand(String command) {
     if (!isConnected) return;
 
-    debugPrint("Command sent to robot: $command");
+    debugPrint("Command sent to robot: \$command");
 
+    // Direct FastAPI WebSocket payload
     final msg = {
       'command': command
     };
     _channel?.sink.add(jsonEncode(msg));
   }
 
-  // Gem og send klippedage og klokkeslæt
   void saveSchedule(List<String> days, TimeOfDay time) {
     if (!isConnected) return;
 
@@ -292,7 +295,7 @@ class RosService extends ChangeNotifier {
       'minute': time.minute,
     };
 
-    debugPrint("Schedule saved and sent: $scheduleData");
+    debugPrint("Schedule saved and sent: \$scheduleData");
 
     final msg = {
       'schedule': scheduleData
@@ -300,27 +303,27 @@ class RosService extends ChangeNotifier {
     _channel?.sink.add(jsonEncode(msg));
   }
 
-  // --- OFFLINE SIMULATOR FOR TEST ---
-  Timer? _simTimer;
-  double _simHeading = 0.0;
+  // --- SIMULATOR ---
+  //Timer? _simTimer;
+  //double _simHeading = 0.0;
 
-  void startSimulation() {
-    isConnected = true;
-    rtkStatus = "RTK Centimeter-Fix (Perfekt)";
-    satellites = 24;
-    cpuLoad = "42.0% (45.0°C)";
-    bladeActive = true;
-    cutterAmps = 4.2;
-    cutterRpm = 2850;
-    cutterPowerWatts = 43.6;
-    totalDistanceKm = 12.5;
-    totalMowingMinutes = 145;
-    operatingMinutes = 145;
-    chargeCycles = 12;
-    cpuTemp = 45.0;
-    batteryVoltage = 24.2;
-    batteryCurrent = -3.2;
-    batteryTemp = 28.5;
+  //void startSimulation() {
+  //  isConnected = true;
+  //  rtkStatus = "RTK Centimeter Fix (Perfect)";
+  //  satellites = 24;
+  //  cpuLoad = "42.0% (45.0°C)";
+  //  bladeActive = true;
+  //  cutterAmps = 4.2;
+  //  cutterRpm = 2850;
+  //  cutterPowerWatts = 43.6;
+  //  totalDistanceKm = 12.5;
+  //  totalMowingMinutes = 145;
+  //  operatingMinutes = 145;
+  //  chargeCycles = 12;
+  //  cpuTemp = 45.0;
+  //  batteryVoltage = 24.2;
+  //  batteryCurrent = -3.2;
+  //  batteryTemp = 28.5;
 
     if (currentX == 0 && currentY == 0) {
       currentX = 150.0;
@@ -338,6 +341,16 @@ class RosService extends ChangeNotifier {
 
       batteryLevel = math.max(0.0, batteryLevel - 0.01);
       progress = math.min(100.0, progress + 0.05);
+
+      // Dynamic battery telemetry simulations for the metrics screen
+      batteryVoltage = 18.0 + (batteryLevel / 100.0) * 7.2; // Ranges from 18.0V (empty) to 25.2V (full)
+      batteryCurrent = -2.0 - (math.sin(_simHeading * 2.0) * 1.5); // Fluctuates between -0.5A and -3.5A while operating
+      batteryTemp = 25.0 + (100.0 - batteryLevel) * 0.1 + (math.cos(_simHeading) * 0.2); // Temperature rises slightly as the battery discharges
+
+      // Also simulate blade load
+      cutterAmps = 3.5 + (math.sin(_simHeading * 5.0) * 1.2);
+      if (cutterAmps < 0) cutterAmps = 0.0;
+      cutterPowerWatts = cutterAmps * batteryVoltage;
     });
   }
 
@@ -349,5 +362,5 @@ class RosService extends ChangeNotifier {
   }
 }
 
-// Global instans til hele appen
+// Global instance for the entire app
 final rosService = RosService();
