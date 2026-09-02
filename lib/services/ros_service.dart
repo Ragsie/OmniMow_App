@@ -136,7 +136,7 @@ class RosService extends ChangeNotifier {
       case 7:
         return "SEEKING EDGE";
       default:
-        return "Ukendt tilstand ($code)";
+        return "Unknown state ($code)";
     }
   }
 
@@ -163,7 +163,7 @@ class RosService extends ChangeNotifier {
         notificationService.showWarning(
           id: 2,
           title: "GNSS Warning",
-          body: "Mistet RTK Centimeter-Fix! Nuværende status: $rtkStatus."
+          body: "Lost RTK centimeter fix! Current status: $rtkStatus."
         );
         _hasWarnedRtk = true;
       } else if (rtkCode == 3) {
@@ -200,7 +200,7 @@ class RosService extends ChangeNotifier {
       mowerState = _mapStateCodeToString(stateCode);
 
       // Check State-based warnings
-      // State 4 = STUCK / SIDDER FAST
+      // State 4 = STUCK
       bool allowStuck = prefs.getBool('notif_stuck') ?? true;
       if (stateCode == 4 && !_hasWarnedStuck && allowStuck) {
         notificationService.showWarning(
@@ -213,7 +213,7 @@ class RosService extends ChangeNotifier {
         _hasWarnedStuck = false;
       }
 
-      // State 2 = DOCKING / SØGER DOCK
+      // State 2 = DOCKING
       bool allowDocking = prefs.getBool('notif_docking') ?? false;
       if (stateCode == 2 && !_hasWarnedDocking && allowDocking) {
         notificationService.showWarning(
@@ -226,7 +226,7 @@ class RosService extends ChangeNotifier {
         _hasWarnedDocking = false;
       }
 
-      // State 3 = CHARGING / OPLADER
+      // State 3 = CHARGING
       bool allowCharging = prefs.getBool('notif_charging') ?? false;
       if (stateCode == 3 && !_hasWarnedCharging && allowCharging) {
         notificationService.showWarning(
@@ -343,9 +343,9 @@ class RosService extends ChangeNotifier {
       progress = math.min(100.0, progress + 0.05);
 
       // Dynamic simulation of battery telemetry for the metrics screen
-      batteryVoltage = 18.0 + (batteryLevel / 100.0) * 7.2; // Går fra 18.0V (tomt) til 25.2V (fuldt)
-      batteryCurrent = -2.0 - (math.sin(_simHeading * 2.0) * 1.5); // Fluktuerer mellem -0.5A og -3.5A under drift
-      batteryTemp = 25.0 + (100.0 - batteryLevel) * 0.1 + (math.cos(_simHeading) * 0.2); // Stiger let i temperatur som batteriet aflades
+      batteryVoltage = 18.0 + (batteryLevel / 100.0) * 7.2; // Ranges from 18.0V (empty) to 25.2V (full)
+      batteryCurrent = -2.0 - (math.sin(_simHeading * 2.0) * 1.5); // Fluctuates between -0.5A and -3.5A during operation
+      batteryTemp = 25.0 + (100.0 - batteryLevel) * 0.1 + (math.cos(_simHeading) * 0.2); // Rises slightly as the battery discharges
 
       // Also simulate blade load
       cutterAmps = 3.5 + (math.sin(_simHeading * 5.0) * 1.2);

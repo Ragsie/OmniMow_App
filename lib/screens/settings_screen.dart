@@ -69,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // --- THEME SETTINGS ---
-          const Text("Udseende", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          const Text("Appearance", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: ValueListenableBuilder<ThemeMode>(
@@ -97,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // --- NOTIFICATION PREFERENCES ---
-          const Text("Vælg Notifikationer", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          const Text("Notification Preferences", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Column(
@@ -162,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // --- ABOUT APP, UPDATES & CREDITS ---
-          const Text("Om Appen", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          const Text("About the App", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Column(

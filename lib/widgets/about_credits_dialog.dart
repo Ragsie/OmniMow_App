@@ -44,7 +44,7 @@ class AboutCreditsDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Platforme & Fundament
+            // Platforms & Foundations
             _buildSectionHeader(context, 'Platforms & Foundations'),
             _buildCreditItem(
               title: 'OpenMow / worx-ros2-mower',
@@ -80,7 +80,7 @@ class AboutCreditsDialog extends StatelessWidget {
               url: 'https://github.com/ultralytics/yolov8',
             ),
 
-            // Centrale Flutter-biblioteker
+            // Core Flutter Packages
             _buildSectionHeader(context, 'Core Flutter Packages'),
             _buildCreditItem(
               title: 'flutter_webrtc',
@@ -115,7 +115,7 @@ class AboutCreditsDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => _launchURL('https://buymeacoffee.com/ragsie'), // Indsæt dit link her!
+          onPressed: () => _launchURL('https://buymeacoffee.com/ragsie'), // Insert your link here!
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

@@ -22,10 +22,10 @@ class UpdateService {
       final response = await http.get(url, headers: {'Accept': 'application/vnd.github.v3+json'});
 
       if (response.statusCode != 200) {
-        debugPrint("GitHub API fejl: ${response.statusCode}");
+        debugPrint("GitHub API error: ${response.statusCode}");
         if (showNoUpdateDialog && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Kunne ikke hente release. Er dit repo-navn rigtigt? (Status: ${response.statusCode})")),
+            SnackBar(content: Text("Could not fetch the release. Is your repository name correct? (Status: ${response.statusCode})")),
           );
         }
         return;
@@ -48,10 +48,10 @@ class UpdateService {
         }
       }
 
-      debugPrint("Lokal Build: $currentBuildNumber | GitHub Release Build: $latestBuildNumber");
-      debugPrint("Lokal Version: $currentVersion | GitHub Release Tag: $tagName");
+      debugPrint("Local Build: $currentBuildNumber | GitHub Release Build: $latestBuildNumber");
+      debugPrint("Local Version: $currentVersion | GitHub Release Tag: $tagName");
 
-      // 2. Lav et fuldstændig robust semantisk versionstjek
+      // 2. Perform a fully robust semantic version check
       if (_isNewerVersion(tagName, currentVersion, latestBuildNumber, currentBuildNumber)) {
         final List assets = releaseData['assets'] ?? [];
         final apkAsset = assets.firstWhere(
@@ -72,14 +72,14 @@ class UpdateService {
         }
       } else if (showNoUpdateDialog && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Du har allerede den nyeste version installeret!")),
+          const SnackBar(content: Text("You already have the latest version installed!")),
         );
       }
     } catch (e) {
-      debugPrint("Fejl ved tjek efter opdatering: $e");
+      debugPrint("Error while checking for updates: $e");
       if (showNoUpdateDialog && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Fejl ved tjek: $e")),
+          SnackBar(content: Text("Error while checking: $e")),
         );
       }
     }
@@ -124,7 +124,7 @@ class UpdateService {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text("Ny opdatering fundet ($version)"),
+        title: Text("New update found ($version)"),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +203,7 @@ class UpdateService {
       }
     } catch (e) {
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Fejl under installation: $e")),
+        SnackBar(content: Text("Installation error: $e")),
       );
     }
   }

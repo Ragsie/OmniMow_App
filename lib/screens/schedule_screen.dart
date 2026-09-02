@@ -84,7 +84,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Schedule saved and sent to the robot!")),
                   );
-                  Navigator.pop(context); // Gå tilbage til Dashboard
+                  Navigator.pop(context); // Go back to the dashboard
                 },
               ),
             ),

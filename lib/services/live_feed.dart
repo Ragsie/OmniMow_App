@@ -108,7 +108,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
 
   @override
   void dispose() {
-    // Lukker og klipper streamen fuldstændig, så snart man går tilbage til Dashboard!
+    // Fully close and stop the stream as soon as the user returns to the dashboard.
     _signalingChannel?.sink.close();
     _peerConnection?.close();
     _peerConnection?.dispose();
@@ -120,7 +120,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("YOLO Camera Feed")),
-      backgroundColor: Colors.black, // Gør videostrømmen flottere
+      backgroundColor: Colors.black, // Improve the appearance of the video stream
       body: Center(
         child: _isRendererInitialized
             ? RTCVideoView(
