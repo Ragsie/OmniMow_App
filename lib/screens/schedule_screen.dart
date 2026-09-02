@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/ros_service.dart'; // Import the ROS service so the schedule can be sent
+import '../services/ros_service.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -55,7 +55,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ),
             ),
             const SizedBox(height: 30),
-            
+
             const Text("Select Weekdays", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Wrap(
@@ -67,11 +67,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   label: Text(day),
                   selected: isSelected,
                   onSelected: (_) => _toggleDay(day),
-                  selectedColor: Colors.green.withValues(alpha: 0.3),
+                  selectedColor: Colors.green.withOpacity(0.3),
                 );
               }).toList(),
             ),
-            
+
             const Spacer(),
             SizedBox(
               width: double.infinity,
@@ -82,7 +82,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 onPressed: () {
                   rosService.saveSchedule(_selectedDays.toList(), _selectedTime);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Schedule saved and sent to the robot!")),
+                    const SnackBar(content: Text("Schedule saved and sent to the mower!")),
                   );
                   Navigator.pop(context); // Return to the dashboard
                 },

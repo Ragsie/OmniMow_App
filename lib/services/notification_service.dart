@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; // Sikrer at Color-klassen er tilgængelig
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -12,17 +12,18 @@ class NotificationService {
   Future<void> init() async {
     if (_isInitialized) return;
 
-   final AndroidInitializationSettings androidSettings = 
-        AndroidInitializationSettings('@mipmap/ic_launcher'); 
+    // Bruger det indbyggede standard-appikon til notifikations-hovedet for at undgå opstartsfejl
+    final AndroidInitializationSettings androidSettings =
+        const AndroidInitializationSettings('@mipmap/ic_launcher');
 
     final InitializationSettings initSettings = InitializationSettings(
       android: androidSettings,
     );
 
-    // Use the required settings parameter
+    // Initialiserer det lokale plugin med navngiven settings-parameter
     await _notificationsPlugin.initialize(settings: initSettings);
 
-    // Request permission on Android 13+
+    // Anmod om tilladelse til notifikationer på Android 13+
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
@@ -33,8 +34,8 @@ class NotificationService {
   Future<void> showWarning({required int id, required String title, required String body}) async {
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'mower_alerts',
-      'Robot Alerts',
-      channelDescription: 'Alerts for battery, RTK, and hardware',
+      'Mower Alerts',
+      channelDescription: 'Alerts for battery, RTK, and hardware issues',
       importance: Importance.high,
       priority: Priority.high,
       color: const Color(0xFF00FF00),
@@ -42,7 +43,7 @@ class NotificationService {
 
     final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-    // Show the notification with named parameters
+    // Viser notifikationen med korrekte navngivne parametre
     await _notificationsPlugin.show(
       id: id,
       title: title,

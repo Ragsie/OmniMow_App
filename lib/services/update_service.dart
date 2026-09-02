@@ -9,7 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 class UpdateService {
   static const String repoOwner = "Ragsie";
-  static const String repoName = "NuroMow-AI_app";
+  static const String repoName = "OpenMow-AI_app";
 
   static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateDialog = false}) async {
     try {
@@ -20,7 +20,7 @@ class UpdateService {
       final response = await http.get(url, headers: {'Accept': 'application/vnd.github.v3+json'});
 
       if (response.statusCode != 200) {
-        debugPrint("GitHub API error: ${response.statusCode}");
+        debugPrint("GitHub API fejl: ${response.statusCode}");
         if (showNoUpdateDialog && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Could not fetch release (Status: ${response.statusCode})")),
@@ -34,13 +34,13 @@ class UpdateService {
       final String bodyText = releaseData['body'] ?? 'No changelog provided.';
       final String releaseHtmlUrl = releaseData['html_url'] ?? 'https://github.com/$repoOwner/$repoName/releases/latest';
 
-      // Extract build number (works for both "v1.0.42-42" and "v1.0.42")
+      // Trækker build-nummeret ud (virker både for "v1.0.42-42" og "v1.0.42")
       int latestBuildNumber = 0;
-      final dashMatch = RegExp(r'-(\d+)$').firstMatch(tagName);
+      final dashMatch = RegExp(r'-(\\d+)$').firstMatch(tagName);
       if (dashMatch != null) {
         latestBuildNumber = int.tryParse(dashMatch.group(1)!) ?? 0;
       } else {
-        final dotMatch = RegExp(r'\.(\d+)$').firstMatch(tagName);
+        final dotMatch = RegExp(r'\\.(\\d+)$').firstMatch(tagName);
         if (dotMatch != null) {
           latestBuildNumber = int.tryParse(dotMatch.group(1)!) ?? 0;
         }
@@ -72,10 +72,10 @@ class UpdateService {
         );
       }
     } catch (e) {
-      debugPrint("Error checking for updates: $e");
+      debugPrint("Error while checking for updates: $e");
       if (showNoUpdateDialog && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error checking: $e")),
+          SnackBar(content: Text("Update check failed: $e")),
         );
       }
     }
@@ -92,7 +92,7 @@ class UpdateService {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text("New Update Found ($version)"),
+        title: Text("New update found ($version)"),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +104,7 @@ class UpdateService {
               if (Platform.isIOS) ...[
                 const SizedBox(height: 12),
                 const Text(
-                  "Note: On iOS, GitHub Releases opens in the browser so you can download the file for Sideloadly.",
+                  "Note: on iOS, GitHub Releases opens in the browser so you can download the file for Sideloadly.",
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -120,48 +120,34 @@ class UpdateService {
             onPressed: () async {
               Navigator.pop(ctx);
               if (Platform.isIOS) {
-                // Åbn GitHub Release-siden på iOS
                 final uri = Uri.parse(releaseHtmlUrl);
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 }
               } else if (Platform.isAndroid && apkDownloadUrl != null) {
-                // Hent og installer direkte på Android
                 _downloadAndInstallApk(context, apkDownloadUrl);
               }
             },
-            child: Text(Platform.isIOS ? "Open Release" : "Update Now"),
+            child: Text(Platform.isIOS ? "Open Release" : "Update now"),
           ),
         ],
       ),
     );
   }
 
-static Future<void> _downloadAndInstallApk(BuildContext context, String url) async {
+  static Future<void> _downloadAndInstallApk(BuildContext context, String url) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.showSnackBar(
-      const SnackBar(content: Text("Downloader opdatering...")),
+      const SnackBar(content: Text("Downloading update...")),
     );
 
     try {
       final response = await http.get(Uri.parse(url));
-      if (response.statusCode != 200) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text("Download fejlede med status: ${response.statusCode}")),
-        );
-        return;
-      }
-
-      // Gem altid i appens interne cache (kræver ingen MANAGE_EXTERNAL_STORAGE rettighed)
-      final dir = await getTemporaryDirectory();
+      final dir = await getTemporaryDirectory(); // Gemmer sikkert i appens cache-mappe
       final file = File('${dir.path}/update.apk');
+      await file.writeAsBytes(response.bodyBytes);
 
-      if (await file.exists()) {
-        await file.delete();
-      }
-
-      await file.writeAsBytes(response.bodyBytes, flush: true);
-
+      // Starter Android pakkeinstallationen via OpenFilex
       final result = await OpenFilex.open(
         file.path,
         type: "application/vnd.android.package-archive",
@@ -169,7 +155,7 @@ static Future<void> _downloadAndInstallApk(BuildContext context, String url) asy
 
       if (result.type != ResultType.done) {
         scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text("Fejl under åbning: ${result.message}")),
+          SnackBar(content: Text("Could not start installation: ${result.message}")),
         );
       }
     } catch (e) {

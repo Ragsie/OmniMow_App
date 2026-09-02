@@ -7,12 +7,11 @@ class NerdMetricsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Nerd Metrics & Diagnostics"),
-      ),
+      appBar: AppBar(title: const Text("Nerd Metrics & Diagnostics")),
       body: ListenableBuilder(
         listenable: rosService,
         builder: (context, _) {
+          // Udregner timer og minutter pænt baseret på den samlede driftstid
           final int hours = rosService.operatingMinutes ~/ 60;
           final int minutes = rosService.operatingMinutes % 60;
 

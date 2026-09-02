@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'widgets/mower_map_painter.dart';
 import 'services/ros_service.dart';
-import 'services/notification_service.dart';
-import 'services/live_feed.dart';
 import 'screens/schedule_screen.dart';
+import 'services/live_feed.dart';
 import 'screens/connection_screen.dart';
 import 'screens/settings_screen.dart';
+import 'services/notification_service.dart';
 import 'screens/nerd_metrics_screen.dart';
 
-// Global ValueNotifier for light/dark theme..
+// Global ValueNotifier for light/dark theme (starts with system default)
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await notificationService.init();
-  
+  await notificationService.init(); // Prepare the local push notification system
+
   runApp(const RobotApp());
 }
 
@@ -27,14 +27,14 @@ class RobotApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, currentMode, _) {
         return MaterialApp(
-          title: 'NuroMow AI',
+          title: 'OpenMow AI',
           debugShowCheckedModeBanner: false,
           theme: ThemeData.light(useMaterial3: true),
           darkTheme: ThemeData.dark(useMaterial3: true),
           themeMode: currentMode,
-          home: const ConnectionScreen(),
+          home: const ConnectionScreen(), // Start on the ConnectionScreen
         );
-      },
+      }
     );
   }
 }
@@ -50,8 +50,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    //rosService.startSimulation(); // simulation kode
-  
+    // Start the offline simulator. Remove or comment this out when connecting to the real robot.
+    rosService.startSimulation();
   }
 
   @override
@@ -61,7 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Text(rosService.currentName),
         leading: IconButton(
           icon: const Icon(Icons.swap_horiz),
-          tooltip: 'Switch robot',
+          tooltip: 'Switch Robot',
           onPressed: () {
             Navigator.push(
               context,
@@ -95,7 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               );
-            },
+            }
           ),
         ],
       ),
@@ -103,7 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 1. Live Map Preview
+            // 1. Live canvas mapping (optimized for a tall view)
             SizedBox(
               height: 380,
               width: double.infinity,
@@ -118,39 +118,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         currentRobotPos: Offset(rosService.currentX, rosService.currentY),
                       ),
                     );
-                  },
+                  }
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            // 2. Battery & Progress
+            // 2. Battery & progress status cards
             ListenableBuilder(
               listenable: rosService,
               builder: (context, _) {
                 return Row(
                   children: [
-                    Expanded(
-                      child: StatusCard(
-                        title: "Battery",
-                        value: "${rosService.batteryLevel.toStringAsFixed(1)}%",
-                        icon: Icons.battery_charging_full,
-                      ),
-                    ),
-                    Expanded(
-                      child: StatusCard(
-                        title: "Progress",
-                        value: "${rosService.progress.toStringAsFixed(1)}%",
-                        icon: Icons.grass,
-                      ),
-                    ),
+                    Expanded(child: StatusCard(
+                      title: "Battery",
+                      value: "${rosService.batteryLevel.toStringAsFixed(1)}%",
+                      icon: Icons.battery_charging_full,
+                    )),
+                    Expanded(child: StatusCard(
+                      title: "Progress",
+                      value: "${rosService.progress.toStringAsFixed(1)}%",
+                      icon: Icons.grass,
+                    )),
                   ],
                 );
-              },
+              }
             ),
             const SizedBox(height: 16),
 
-            // 3. Robot State tekst
+            // 3. Aktiv handling boks
             ListenableBuilder(
               listenable: rosService,
               builder: (context, _) {
@@ -168,7 +164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 4. Manual Control (Start / Stop / Home)
+            // --- MANUAL CONTROL (START / STOP / HOME) ---
             const Text("Manual Control", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 8),
             Row(
@@ -196,30 +192,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 5. Menu knapper
+            // --- MENU (LIVE FEED, SCHEDULE, METRICS) ---
             const Text("Menu", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 8),
+
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LiveFeedScreen()),
-                ),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LiveFeedScreen())),
                 icon: const Icon(Icons.videocam),
                 label: const Text("Live Feed", style: TextStyle(fontSize: 16)),
                 style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
               ),
             ),
             const SizedBox(height: 10),
+
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ScheduleScreen()),
-                    ),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduleScreen())),
                     icon: const Icon(Icons.calendar_month),
                     label: const Text("Schedule"),
                   ),
@@ -227,10 +219,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const NerdMetricsScreen()),
-                    ),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NerdMetricsScreen())),
                     icon: const Icon(Icons.analytics),
                     label: const Text("Metrics"),
                   ),
@@ -245,18 +234,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// Helper widget for status cards on the Dashboard
+// Helper widget for status cards on the dashboard
 class StatusCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-
-  const StatusCard({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
+  const StatusCard({super.key, required this.title, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) {

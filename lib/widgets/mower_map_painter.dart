@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 class MowerMapPainter extends CustomPainter {
   final List<Offset> path;
   final Offset currentRobotPos;
@@ -9,6 +8,7 @@ class MowerMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // 1. Definer pensler til tegning
     final paintGrassArea = Paint()
       ..color = Colors.green.shade800
       ..style = PaintingStyle.fill;
@@ -23,11 +23,11 @@ class MowerMapPainter extends CustomPainter {
       ..color = Colors.red
       ..style = PaintingStyle.fill;
 
-    // Draw the lawn area.
+    // 2. Tegn selve plæne-området (Baggrund)
     final rect = Rect.fromLTWH(20, 20, size.width - 40, size.height - 40);
     canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(16)), paintGrassArea);
 
-    // Draw the mower's route history.
+    // 3. Tegn køresporet (Historik over kørte punkter)
     if (path.length > 1) {
       final pathPoints = Path();
       pathPoints.moveTo(path.first.dx, path.first.dy);
@@ -37,7 +37,7 @@ class MowerMapPainter extends CustomPainter {
       canvas.drawPath(pathPoints, paintPath);
     }
 
-    // 3. Tegn robotten som en levende prik
+    // 4. Tegn robotten som en rød lysende prik
     canvas.drawCircle(currentRobotPos, 8.0, paintRobot);
   }
 

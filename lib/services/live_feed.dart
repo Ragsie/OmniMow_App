@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'ros_service.dart';
-
+import 'ros_service.dart'; // Importerer for at læse den aktive robops-IP
 
 class LiveFeedScreen extends StatefulWidget {
   const LiveFeedScreen({super.key});
@@ -16,7 +15,6 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
   final RTCVideoRenderer _videoRenderer = RTCVideoRenderer();
   bool _isRendererInitialized = false;
 
-  // WebRTC variables
   RTCPeerConnection? _peerConnection;
   WebSocketChannel? _signalingChannel;
 
@@ -26,25 +24,24 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
     _initRenderer();
   }
 
-  // 1. Prepare the canvas, then start the connection
   Future<void> _initRenderer() async {
     await _videoRenderer.initialize();
     setState(() {
       _isRendererInitialized = true;
     });
-    
-    // Start only when the screen opens
+
+    // Opretter forbindelsen KUN når denne specifikke skærm åbnes
     _connectWebRTC();
   }
 
-Future<void> _connectWebRTC() async {
+  Future<void> _connectWebRTC() async {
     try {
-      // Get the IP directly from the ROS service
-      final robotIp = rosService.currentIp; 
+      // Henter den aktive robot-IP direkte fra den centrale ROS Service!
+      final robotIp = rosService.currentIp;
 
       if (robotIp.isEmpty) {
         debugPrint("Error: No active IP selected!");
-        return; // Stop if no IP is available
+        return;
       }
 
       final configuration = {
@@ -63,15 +60,13 @@ Future<void> _connectWebRTC() async {
         }
       };
 
-      // --- SIGNALING ---
-      // NOTE: Port 8889 is used as an example. Adjust it for your WebRTC server.
-      final signalingUrl = 'ws://$robotIp:8889/webrtc'; 
+      // Forbinder WebRTC-signalering til port 8889 på robottens FastAPI/MediaMTX service
+      final signalingUrl = 'ws://$robotIp:8889/webrtc';
       _signalingChannel = WebSocketChannel.connect(Uri.parse(signalingUrl));
 
-      // Listen for responses from the robot
       _signalingChannel!.stream.listen((message) async {
         final data = jsonDecode(message);
-        
+
         if (data['type'] == 'answer') {
           final answer = RTCSessionDescription(data['sdp'], data['type']);
           await _peerConnection!.setRemoteDescription(answer);
@@ -91,7 +86,6 @@ Future<void> _connectWebRTC() async {
         }
       });
 
-      // Send network information (ICE candidates) to the robot
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
         _signalingChannel!.sink.add(jsonEncode({
           'candidate': candidate.candidate,
@@ -100,7 +94,6 @@ Future<void> _connectWebRTC() async {
         }));
       };
 
-      // Ask the robot to start the video stream (create an offer)
       final offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
       _signalingChannel!.sink.add(jsonEncode({
@@ -109,13 +102,13 @@ Future<void> _connectWebRTC() async {
       }));
 
     } catch (e) {
-      debugPrint("WebRTC error: $e");
+      debugPrint("WebRTC Error: $e");
     }
   }
 
   @override
   void dispose() {
-    // 3. IMPORTANT: Shut down the stream as soon as the user presses "Back"
+    // Lukker og klipper streamen fuldstændig, så snart man går tilbage til Dashboard!
     _signalingChannel?.sink.close();
     _peerConnection?.close();
     _peerConnection?.dispose();
@@ -127,7 +120,7 @@ Future<void> _connectWebRTC() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("YOLO Camera Feed")),
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.black, // Gør videostrømmen flottere
       body: Center(
         child: _isRendererInitialized
             ? RTCVideoView(

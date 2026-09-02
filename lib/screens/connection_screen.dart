@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ros_service.dart';
-import '../main.dart';
 import '../services/update_service.dart';
+import '../main.dart';
 
 class RobotDevice {
   final String name;
@@ -12,7 +12,7 @@ class RobotDevice {
   RobotDevice({required this.name, required this.ip});
 
   Map<String, dynamic> toJson() => {'name': name, 'ip': ip};
-  factory RobotDevice.fromJson(Map<String, dynamic> json) => 
+  factory RobotDevice.fromJson(Map<String, dynamic> json) =>
       RobotDevice(name: json['name'], ip: json['ip']);
 }
 
@@ -32,16 +32,16 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     super.initState();
     _loadRobots();
 
-  // Checks for GitHub update as soon as the app starts
+    // Check for in-app GitHub updates as soon as the app starts.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-     UpdateService.checkForUpdates(context);
-   });
+      UpdateService.checkForUpdates(context);
+    });
   }
 
   Future<void> _loadRobots() async {
     final prefs = await SharedPreferences.getInstance();
     final robotListStrings = prefs.getStringList('robot_fleet') ?? [];
-    
+
     setState(() {
       _savedRobots = robotListStrings
           .map((e) => RobotDevice.fromJson(jsonDecode(e)))
@@ -74,26 +74,23 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     await _saveFleet();
   }
 
-  // Connect and open the dashboard
-  Future<void> _connectToRobot(String name, String ip) async {
-    final connected = await rosService.connect(name, ip);
+  void _connectToRobot(String name, String ip) async {
+    // Save the selected IP so WebRTC can access it later.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('robot_ip', ip);
+
+    rosService.connect(name, ip);
+
     if (!mounted) return;
 
-    if (!connected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Could not connect to the ROS 2 bridge.")),
-      );
-      return;
-    }
-    
+    // Clear the stack and force a fresh dashboard load.
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      (Route<dynamic> route) => false, 
+      (Route<dynamic> route) => false,
     );
   }
 
-  // Dialog for adding or editing a robot
   void _showRobotDialog({RobotDevice? robotToEdit, int? editIndex}) {
     final nameController = TextEditingController(text: robotToEdit?.name ?? '');
     final ipController = TextEditingController(text: robotToEdit?.ip ?? '');
@@ -102,7 +99,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(robotToEdit == null ? "Add New Robot" : "Edit Robot"),
+          title: Text(robotToEdit == null ? "Add new mower" : "Edit mower"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -117,7 +114,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               TextField(
                 controller: ipController,
                 decoration: const InputDecoration(
-                  labelText: "IP Address (e.g. 192.168.1.50)",
+                  labelText: "IP address (e.g. 192.168.1.50)",
                   prefixIcon: Icon(Icons.wifi),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -133,8 +130,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               onPressed: () {
                 if (nameController.text.isNotEmpty && ipController.text.isNotEmpty) {
                   _addOrUpdateRobot(
-                    nameController.text.trim(), 
-                    ipController.text.trim(), 
+                    nameController.text.trim(),
+                    ipController.text.trim(),
                     editIndex: editIndex,
                   );
                   Navigator.pop(context);
@@ -169,7 +166,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   Icon(Icons.precision_manufacturing, size: 80, color: Colors.grey.shade700),
                   const SizedBox(height: 16),
                   const Text(
-                    "No robots found.\nTap 'Add' to create one.",
+                    "No mowers found.\nTap 'Add' to create one.",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
@@ -192,7 +189,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     ),
                     title: Text(robot.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     subtitle: Text("IP: ${robot.ip}"),
-                    // --- POPUP MENU ---
                     trailing: PopupMenuButton<String>(
                       onSelected: (value) {
                         if (value == 'connect') {
@@ -236,7 +232,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         ),
                       ],
                     ),
-                    // Tapping the card also connects immediately
                     onTap: () => _connectToRobot(robot.name, robot.ip),
                   ),
                 );

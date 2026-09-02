@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../services/update_service.dart';
 import '../services/ros_service.dart';
+import '../widgets/about_credits_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,7 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _isCheckingUpdate = false;
 
-  String _appVersion = "Unknown";
+  String _appVersion = "Ukendt";
   String _buildNumber = "";
 
   @override
@@ -95,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // --- NOTIFICATION PREFERENCES ---
+          // --- NOTIFICATION OPTIONS ---
           const Text("Choose Notifications", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
@@ -103,8 +104,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 SwitchListTile(
                   secondary: const Icon(Icons.battery_alert, color: Colors.orange),
-                  title: const Text("Low Battery"),
-                  subtitle: const Text("Alert when battery is below 20%"),
+                  title: const Text("Low battery"),
+                  subtitle: const Text("Notify when the battery drops below 20%"),
                   value: _notifBattery,
                   onChanged: (val) {
                     setState(() => _notifBattery = val);
@@ -114,8 +115,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.satellite_alt, color: Colors.redAccent),
-                  title: const Text("RTK / GNSS Status"),
-                  subtitle: const Text("Alert if RTK Fix is lost"),
+                  title: const Text("RTK / GNSS status"),
+                  subtitle: const Text("Warn if it loses its fix"),
                   value: _notifRtk,
                   onChanged: (val) {
                     setState(() => _notifRtk = val);
@@ -125,8 +126,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.home, color: Colors.blueAccent),
-                  title: const Text("Returning Home / Docking"),
-                  subtitle: const Text("When mower is heading to dock"),
+                  title: const Text("Returning home / Docking"),
+                  subtitle: const Text("When the mower is driving back to the dock"),
                   value: _notifDocking,
                   onChanged: (val) {
                     setState(() => _notifDocking = val);
@@ -136,8 +137,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.bolt, color: Colors.amber),
-                  title: const Text("Charging Status"),
-                  subtitle: const Text("When mower is charging"),
+                  title: const Text("Charging status"),
+                  subtitle: const Text("When the mower is connected to power"),
                   value: _notifCharging,
                   onChanged: (val) {
                     setState(() => _notifCharging = val);
@@ -147,8 +148,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.warning, color: Colors.red),
-                  title: const Text("Stuck Alert"),
-                  subtitle: const Text("Critical alert if mower is stuck and can't move"),
+                  title: const Text("Stuck"),
+                  subtitle: const Text("Critical warning if it stops and cannot continue"),
                   value: _notifStuck,
                   onChanged: (val) {
                     setState(() => _notifStuck = val);
@@ -160,7 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // --- ABOUT THE APP & UPDATES ---
+          // --- ABOUT THE APP, UPDATES & CREDITS ---
           const Text("About the App", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
@@ -168,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.info_outline),
-                  title: const Text("NuroMow AI"),
+                  title: const Text("OpenMow AI"),
                   subtitle: Text("Version: $_appVersion${_buildNumber.isNotEmpty ? ' (Build $_buildNumber)' : ''}"),
                 ),
                 const Divider(height: 1),
@@ -180,6 +181,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? "${rosService.currentName} (${rosService.currentIp})"
                         : "No active connection",
                   ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.favorite_border, color: Colors.pinkAccent),
+                  title: const Text("Credits & Contributors"),
+                  subtitle: const Text("View source credits and support development"),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) => const AboutCreditsDialog(),
+                    );
+                  },
                 ),
                 const Divider(height: 1),
                 Padding(
@@ -194,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.system_update),
-                      label: Text(_isCheckingUpdate ? "Checking..." : "Check for Update Now"),
+                      label: Text(_isCheckingUpdate ? "Checking..." : "Check for updates now"),
                       onPressed: _isCheckingUpdate
                           ? null
                           : () async {
