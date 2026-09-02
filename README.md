@@ -20,7 +20,7 @@ The project is designed to handle an advanced hardware stack in which a Worx Lan
 
 * **Frontend:** [Flutter](https://flutter.dev/) & Dart (supports Android, iOS, Windows, and Web).
 * **Backend Communication:** WebSockets (JSON-based topic publishing/subscribing).
-* **Robot OS:** [ROS 2 Mower](https://github.com/Ragsie/OmniMow) (handles path planning, sensor fusion, and motor control).
+* **Robot OS:** [OmniMow](https://github.com/Ragsie/OmniMow) (handles path planning, sensor fusion, and motor control).
 
 ---
 
@@ -35,7 +35,7 @@ The repository is configured with automated CI/CD workflows via GitHub Actions. 
 
 ---
 
-## ROS 2 Mower Backend
+## OmniMow Backend
 
 The app is intended to work with the [OmniMow](https://github.com/Ragsie/OmniMow) project. That repository contains the ROS 2 mower-side software and is the place to configure the robot, its sensors, navigation, and hardware controllers.
 
