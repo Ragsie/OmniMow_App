@@ -75,7 +75,7 @@ GitHub Actions – Automates our entire CI/CD pipeline, signing release APKs, an
 If this project helped you or inspired your own build, consider buying me a cup of coffee. It would make my day and support me in developing more!
 please note that this project is, and will always remain, **100% free and open-source** under the **GNU GPLv3 License** in accordance with the licenses of our upstream dependencies.
 
-* **Buy Me A coffie:**  https://buymeacoffee.com/Ragsie
+[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=ragsie&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://buymeacoffee.com/ragsie)
 
 | Coin | QR | Address |
 | :-- | :--- | :---: |
