@@ -1,4 +1,4 @@
-name: NuroMow CI/CD Rolling Release Pipeline
+ name: OmniMow CI/CD Rolling Release Pipeline
 
 on:
   push:
@@ -59,16 +59,16 @@ jobs:
           # Check if this is a tagged release or a rolling release from main
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "RELEASE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "RELEASE_NAME=NuroMow v$VERSION_NAME (Build $BUILD_NUMBER)" >> $GITHUB_ENV
+            echo "RELEASE_NAME=OmniMow v$VERSION_NAME (Build $BUILD_NUMBER)" >> $GITHUB_ENV
             echo "IS_PRERELEASE=false" >> $GITHUB_ENV
-            echo "APK_FILE=NuroMow-v$VERSION_NAME-$BUILD_NUMBER.apk" >> $GITHUB_ENV
-            echo "Building permanent tag release: NuroMow-v$VERSION_NAME-$BUILD_NUMBER.apk"
+            echo "APK_FILE=OmniMow-v$VERSION_NAME-$BUILD_NUMBER.apk" >> $GITHUB_ENV
+            echo "Building permanent tag release: OmniMow-v$VERSION_NAME-$BUILD_NUMBER.apk"
           else
             echo "RELEASE_TAG=latest" >> $GITHUB_ENV
-            echo "RELEASE_NAME=NuroMow Latest Development Build" >> $GITHUB_ENV
+            echo "RELEASE_NAME=OmniMow Latest Development Build" >> $GITHUB_ENV
             echo "IS_PRERELEASE=false" >> $GITHUB_ENV
-            echo "APK_FILE=NuroMow-latest-android.apk" >> $GITHUB_ENV
-            echo "Building rolling development release: NuroMow-latest-android.apk"
+            echo "APK_FILE=OmniMow-latest-android.apk" >> $GITHUB_ENV
+            echo "Building rolling development release: OmniMow-latest-android.apk"
           fi
 
       # 6. Decode Android Signing Keystore File from GitHub Secrets
@@ -102,7 +102,7 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NuroMow-Android-APK
+          name: OmniMow-Android-APK
           path: build/app/outputs/flutter-apk/${{ env.APK_FILE }}
           if-no-files-found: error
           retention-days: 7
@@ -114,7 +114,7 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_NAME }}
           body: |
-            ### NuroMow Build Information
+            ### OmniMow Build Information
             * **Commit SHA:** `${{ github.sha }}`
             * **Build Number:** `${{ env.BUILD_NUMBER }}`
             * **Version Name:** `${{ env.VERSION_NAME }}`
@@ -171,10 +171,10 @@ jobs:
           # Check if this is a tagged release or a rolling release from main
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "RELEASE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "IOS_FILE=NuroMow-v$VERSION_NAME-$BUILD_NUMBER-ios-unsigned.zip" >> $GITHUB_ENV
+            echo "IOS_FILE=OmniMow-v$VERSION_NAME-$BUILD_NUMBER-ios-unsigned.zip" >> $GITHUB_ENV
           else
             echo "RELEASE_TAG=latest" >> $GITHUB_ENV
-            echo "IOS_FILE=NuroMow-latest-ios-unsigned.zip" >> $GITHUB_ENV
+            echo "IOS_FILE=OmniMow-latest-ios-unsigned.zip" >> $GITHUB_ENV
           fi
 
       # 5. Build iOS App (No Codesign)
@@ -194,7 +194,7 @@ jobs:
       - name: Upload iOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NuroMow-iOS-Unsigned-ZIP
+          name: OmniMow-iOS-Unsigned-ZIP
           path: ${{ env.IOS_FILE }}
           if-no-files-found: error
           retention-days: 7

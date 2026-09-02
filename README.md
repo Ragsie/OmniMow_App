@@ -1,6 +1,6 @@
-# NuroMow AI 🚜
+# OmniMow 🚜
 
-[![Build and Release NuroMow AI](https://github.com/Ragsie/NuroMow-AI_app/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/NuroMow-AI_app/actions/workflows/build.yml)
+[![Build and Release OmniMow](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml)
 
 A modern, fast control app built in Flutter for operating a custom autonomous robotic lawn mower. The app provides the primary interface between the user and the robot's ROS 2 backend through WebSockets.
 
@@ -20,15 +20,15 @@ The project is designed to handle an advanced hardware stack in which a Worx Lan
 
 * **Frontend:** [Flutter](https://flutter.dev/) & Dart (supports Android, iOS, Windows, and Web).
 * **Backend Communication:** WebSockets (JSON-based topic publishing/subscribing).
-* **Robot OS:** [ROS 2 Mower](https://github.com/Ragsie/worx-ros2-mower) (handles path planning, sensor fusion, and motor control).
+* **Robot OS:** [ROS 2 Mower](https://github.com/Ragsie/OmniMow) (handles path planning, sensor fusion, and motor control).
 
 ---
 
 ## 📥 Installation Guide
 
 Find step-by-step guides on how to install and set up the app on your mobile devices in our Wiki documentation:
-* [How to install on Android (Wiki Docs)](https://github.com/Ragsie/ros_mower_app/wiki/Android-Installation)
-* [How to install on iPhone / iOS via Sideloadly (Wiki Docs)](https://github.com/Ragsie/ros_mower_app/wiki/iOS-Installation-Sideloadly)
+* [How to install on Android (Wiki Docs)](https://github.com/Ragsie/OmniMow_App/wiki/Android-Installation)
+* [How to install on iPhone / iOS via Sideloadly (Wiki Docs)](https://github.com/Ragsie/OmniMow_App/wiki/iOS-Installation-Sideloadly)
 
 ### Automated Builds & Releases via GitHub Actions
 The repository is configured with automated CI/CD workflows via GitHub Actions. Every push to the main branch automatically compiles both the Android APK and the iOS app, manages auto-incrementing build numbers based on commits, and publishes them directly to the repository's **Releases** page.
@@ -37,7 +37,7 @@ The repository is configured with automated CI/CD workflows via GitHub Actions. 
 
 ## ROS 2 Mower Backend
 
-The app is intended to work with the [worx-ros2-mower](https://github.com/Ragsie/worx-ros2-mower) project. That repository contains the ROS 2 mower-side software and is the place to configure the robot, its sensors, navigation, and hardware controllers.
+The app is intended to work with the [OmniMow](https://github.com/Ragsie/OmniMow) project. That repository contains the ROS 2 mower-side software and is the place to configure the robot, its sensors, navigation, and hardware controllers.
 
 The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:9090`. The ROS 2 bridge must be running and reachable from the phone or device before the dashboard can be opened.
 
@@ -51,7 +51,7 @@ The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:909
 ---
 
 Acknowledgements & Credits
-As NuroMow AI is built to support and empower the amazing open-source and DIY robotics community, and we now accept donations, we would like to extend a huge thank you to the projects, libraries, and developers that have made this app possible. This project truly stands on the shoulders of giants:
+As OmniMow is built to support and empower the amazing open-source and DIY robotics community, and we now accept donations, we would like to extend a huge thank you to the projects, libraries, and developers that have made this app possible. This project truly stands on the shoulders of giants:
 
 Core Platforms & Projects
 ROS 2 (Robot Operating System) – The powerful middleware framework that manages the robot's logic, sensors, and actuators.

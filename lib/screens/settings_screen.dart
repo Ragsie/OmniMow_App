@@ -169,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.info_outline),
-                  title: const Text("NuroMow"),
+                  title: const Text("OmniMow"),
                   subtitle: Text("Version: $_appVersion${_buildNumber.isNotEmpty ? ' (Build $_buildNumber)' : ''}"),
                 ),
                 const Divider(height: 1),

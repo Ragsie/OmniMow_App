@@ -29,7 +29,7 @@ class AboutCreditsDialog extends StatelessWidget {
           shrinkWrap: true,
           children: [
             const Text(
-              'NuroMow',
+              'OmniMow',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),

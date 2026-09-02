@@ -11,7 +11,7 @@ class RosService extends ChangeNotifier {
   bool isConnected = false;
 
   String currentIp = "";
-  String currentName = "NuroMow Dashboard";
+  String currentName = "OmniMow Dashboard";
 
   // --- ROBOT STATE (Live data) ---
   String mowerState = "STOP";
@@ -186,7 +186,7 @@ class RosService extends ChangeNotifier {
         notificationService.showWarning(
           id: 1,
           title: "Low Battery!",
-          body: "NuroMow has only ${batteryLevel.toInt()}% battery remaining."
+          body: "OmniMow has only ${batteryLevel.toInt()}% battery remaining."
         );
         _hasWarnedBattery = true;
       } else if (batteryLevel > 25.0) {
@@ -218,7 +218,7 @@ class RosService extends ChangeNotifier {
       if (stateCode == 2 && !_hasWarnedDocking && allowDocking) {
         notificationService.showWarning(
           id: 3,
-          title: "NuroMow Alerts",
+          title: "OmniMow Alerts",
           body: "The machine is driving back to the docking station."
         );
         _hasWarnedDocking = true;
