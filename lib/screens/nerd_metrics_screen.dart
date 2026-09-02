@@ -11,7 +11,7 @@ class NerdMetricsScreen extends StatelessWidget {
       body: ListenableBuilder(
         listenable: rosService,
         builder: (context, _) {
-          // Calculates hours and minutes neatly based on total operating time.
+          // Calculate hours and minutes neatly based on the total operating time
           final int hours = rosService.operatingMinutes ~/ 60;
           final int minutes = rosService.operatingMinutes % 60;
 
