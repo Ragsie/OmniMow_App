@@ -41,7 +41,7 @@ class NerdMetricsScreen extends StatelessWidget {
                             : "Idle (Stopped)",
                       ),
                       trailing: Text(
-                        "\${rosService.cutterAmps.toStringAsFixed(1)} A",
+                        "${rosService.cutterAmps.toStringAsFixed(1)} A",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -87,7 +87,7 @@ class NerdMetricsScreen extends StatelessWidget {
                       leading: const Icon(Icons.bolt, color: Colors.amber),
                       title: const Text("Battery Voltage"),
                       trailing: Text(
-                        "\${rosService.batteryVoltage.toStringAsFixed(1)} V",
+                        "${rosService.batteryVoltage.toStringAsFixed(1)} V",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
@@ -96,7 +96,7 @@ class NerdMetricsScreen extends StatelessWidget {
                       leading: const Icon(Icons.electric_meter, color: Colors.blueAccent),
                       title: const Text("Battery Current"),
                       trailing: Text(
-                        "\${rosService.batteryCurrent.toStringAsFixed(1)} A",
+                        "${rosService.batteryCurrent.toStringAsFixed(1)} A",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
@@ -105,7 +105,7 @@ class NerdMetricsScreen extends StatelessWidget {
                       leading: const Icon(Icons.thermostat, color: Colors.orangeAccent),
                       title: const Text("Battery Temperature"),
                       trailing: Text(
-                        "\${rosService.batteryTemp.toStringAsFixed(1)} °C",
+                        "${rosService.batteryTemp.toStringAsFixed(1)} °C",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
@@ -127,7 +127,7 @@ class NerdMetricsScreen extends StatelessWidget {
                       leading: const Icon(Icons.straighten, color: Colors.blueAccent),
                       title: const Text("Total Distance"),
                       trailing: Text(
-                        "\${rosService.totalDistanceKm.toStringAsFixed(2)} km",
+                        "${rosService.totalDistanceKm.toStringAsFixed(2)} km",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
@@ -136,7 +136,7 @@ class NerdMetricsScreen extends StatelessWidget {
                       leading: const Icon(Icons.timer, color: Colors.greenAccent),
                       title: const Text("Total Operating Time"),
                       trailing: Text(
-                        "\$hours hr \$minutes min",
+                        "$hours hr $minutes min",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
@@ -145,7 +145,7 @@ class NerdMetricsScreen extends StatelessWidget {
                       leading: const Icon(Icons.ev_station, color: Colors.amber),
                       title: const Text("Charge Cycles"),
                       trailing: Text(
-                        "\${rosService.chargeCycles}",
+                        "${rosService.chargeCycles}",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
@@ -172,7 +172,7 @@ class NerdMetricsScreen extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.satellite_alt),
                       title: const Text("RTK GNSS Status"),
-                      subtitle: Text("Fix Type: \${rosService.rtkStatus} | Satellites: \${rosService.satellites}"),
+                      subtitle: Text("Fix Type: ${rosService.rtkStatus} | Satellites: ${rosService.satellites}"),
                     ),
                   ],
                 ),
