@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 class UpdateService {
   // TODO: REMEMBER TO CHANGE THESE IF YOUR GITHUB REPOSITORY HAS CHANGED NAME!
   static const String repoOwner = "Ragsie";
-  static const String repoName = "NuroMow"; // e.g. Change to "NuroMow" if your repo is renamed
+  static const String repoName = "NuroMow-AI_app"; // e.g. Change to "NuroMow" if your repo is renamed
 
   static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateDialog = false}) async {
     try {
