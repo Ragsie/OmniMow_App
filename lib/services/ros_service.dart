@@ -304,59 +304,59 @@ class RosService extends ChangeNotifier {
   }
 
   // --- SIMULATOR ---
-  //Timer? _simTimer;
-  //double _simHeading = 0.0;
-
-  //void startSimulation() {
-  //  isConnected = true;
-  //  rtkStatus = "RTK Centimeter Fix (Perfect)";
-  //  satellites = 24;
-  //  cpuLoad = "42.0% (45.0°C)";
-  //  bladeActive = true;
-  //  cutterAmps = 4.2;
-  //  cutterRpm = 2850;
-  //  cutterPowerWatts = 43.6;
-  //  totalDistanceKm = 12.5;
-  //  totalMowingMinutes = 145;
-  //  operatingMinutes = 145;
-  //  chargeCycles = 12;
-  //  cpuTemp = 45.0;
-  //  batteryVoltage = 24.2;
-  //  batteryCurrent = -3.2;
-  //  batteryTemp = 28.5;
-
-    if (currentX == 0 && currentY == 0) {
-      currentX = 150.0;
-      currentY = 150.0;
-    }
-
-    _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      _simHeading += 0.05;
-      double speed = 2.0;
-
-      double newX = currentX + (speed * math.cos(_simHeading));
-      double newY = currentY + (speed * math.sin(_simHeading));
-
-      updatePosition(newX, newY);
-
-      batteryLevel = math.max(0.0, batteryLevel - 0.01);
-      progress = math.min(100.0, progress + 0.05);
-
-      // Dynamic battery telemetry simulations for the metrics screen
-      batteryVoltage = 18.0 + (batteryLevel / 100.0) * 7.2; // Ranges from 18.0V (empty) to 25.2V (full)
-      batteryCurrent = -2.0 - (math.sin(_simHeading * 2.0) * 1.5); // Fluctuates between -0.5A and -3.5A while operating
-      batteryTemp = 25.0 + (100.0 - batteryLevel) * 0.1 + (math.cos(_simHeading) * 0.2); // Temperature rises slightly as the battery discharges
-
-      // Also simulate blade load
-      cutterAmps = 3.5 + (math.sin(_simHeading * 5.0) * 1.2);
-      if (cutterAmps < 0) cutterAmps = 0.0;
-      cutterPowerWatts = cutterAmps * batteryVoltage;
-    });
-  }
+  // Timer? _simTimer;
+  // double _simHeading = 0.0;
+  //
+  // void startSimulation() {
+  //   isConnected = true;
+  //   rtkStatus = "RTK Centimeter Fix (Perfect)";
+  //   satellites = 24;
+  //   cpuLoad = "42.0% (45.0°C)";
+  //   bladeActive = true;
+  //   cutterAmps = 4.2;
+  //   cutterRpm = 2850;
+  //   cutterPowerWatts = 43.6;
+  //   totalDistanceKm = 12.5;
+  //   totalMowingMinutes = 145;
+  //   operatingMinutes = 145;
+  //   chargeCycles = 12;
+  //   cpuTemp = 45.0;
+  //   batteryVoltage = 24.2;
+  //   batteryCurrent = -3.2;
+  //   batteryTemp = 28.5;
+  //
+  //   if (currentX == 0 && currentY == 0) {
+  //     currentX = 150.0;
+  //     currentY = 150.0;
+  //   }
+  //
+  //   _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+  //     _simHeading += 0.05;
+  //     double speed = 2.0;
+  //
+  //     double newX = currentX + (speed * math.cos(_simHeading));
+  //     double newY = currentY + (speed * math.sin(_simHeading));
+  //
+  //     updatePosition(newX, newY);
+  //
+  //     batteryLevel = math.max(0.0, batteryLevel - 0.01);
+  //     progress = math.min(100.0, progress + 0.05);
+  //
+  //     // Dynamic battery telemetry simulations for the metrics screen
+  //     batteryVoltage = 18.0 + (batteryLevel / 100.0) * 7.2; // Ranges from 18.0V (empty) to 25.2V (full)
+  //     batteryCurrent = -2.0 - (math.sin(_simHeading * 2.0) * 1.5); // Fluctuates between -0.5A and -3.5A while operating
+  //     batteryTemp = 25.0 + (100.0 - batteryLevel) * 0.1 + (math.cos(_simHeading) * 0.2); // Temperature rises slightly as the battery discharges
+  //
+  //     // Also simulate blade load
+  //     cutterAmps = 3.5 + (math.sin(_simHeading * 5.0) * 1.2);
+  //     if (cutterAmps < 0) cutterAmps = 0.0;
+  //     cutterPowerWatts = cutterAmps * batteryVoltage;
+  //   });
+  // }
 
   @override
   void dispose() {
-    _simTimer?.cancel();
+  //  _simTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
