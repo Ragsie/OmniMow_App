@@ -1,5 +1,4 @@
- name: OmniMow CI/CD Rolling Release Pipeline
-
+name: OmniMow CI/CD Rolling Release Pipeline
 on:
   push:
     branches:
