@@ -77,7 +77,7 @@ class AboutCreditsDialog extends StatelessWidget {
             _buildCreditItem(
               title: 'YOLO (You Only Look Once)',
               subtitle: 'State-of-the-art object detection in the live video stream.',
-              url: 'https://github.com/ultralytics/yolov8',
+              url: 'https://github.com/ultralytics',
             ),
 
             // Core Flutter Packages
