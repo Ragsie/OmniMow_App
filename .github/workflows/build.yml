@@ -1,4 +1,5 @@
 name: OmniMow CI/CD Rolling Release Pipeline
+
 on:
   push:
     branches:
@@ -64,7 +65,7 @@ jobs:
             echo "Building permanent tag release: OmniMow-v$VERSION_NAME-$BUILD_NUMBER.apk"
           else
             echo "RELEASE_TAG=latest" >> $GITHUB_ENV
-            echo "RELEASE_NAME=OmniMow Latest Development Build" >> $GITHUB_ENV
+            echo "RELEASE_NAME=OmniMow Latest Build (v$VERSION_NAME-$BUILD_NUMBER)" >> $GITHUB_ENV
             echo "IS_PRERELEASE=false" >> $GITHUB_ENV
             echo "APK_FILE=OmniMow-latest-android.apk" >> $GITHUB_ENV
             echo "Building rolling development release: OmniMow-latest-android.apk"
@@ -97,7 +98,7 @@ jobs:
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/${{ env.APK_FILE }}
 
-      # 9. Upload Built APK as a workflow run artifact (Always accessible in GitHub Actions)
+      # 9. Upload Built APK as a workflow run artifact
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -119,7 +120,7 @@ jobs:
             * **Version Name:** `${{ env.VERSION_NAME }}`
             * **Release Type:** ${{ env.RELEASE_TAG == 'latest' && '🔄 Rolling Development Release' || '📦 Permanent Tagged Release' }}
             
-            *If you are downloading the rolling release, these assets are automatically updated on every push to the `main` branch. Links remain constant.*
+            *If you are downloading the rolling release, these assets are automatically updated on every push to the \`main\` branch. Links remain constant.*
           files: build/app/outputs/flutter-apk/${{ env.APK_FILE }}
           draft: false
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
@@ -167,7 +168,6 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           
-          # Check if this is a tagged release or a rolling release from main
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "RELEASE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
             echo "IOS_FILE=OmniMow-v$VERSION_NAME-$BUILD_NUMBER-ios-unsigned.zip" >> $GITHUB_ENV
@@ -176,7 +176,7 @@ jobs:
             echo "IOS_FILE=OmniMow-latest-ios-unsigned.zip" >> $GITHUB_ENV
           fi
 
-      # 5. Build iOS App (No Codesign)
+      # 5. Build iOS App (No Codesign - free of developer account constraints)
       - name: Build iOS App (No Codesign)
         run: flutter build ios --release --no-codesign
 

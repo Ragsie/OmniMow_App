@@ -1,37 +1,27 @@
-# OmniMow 🚜
+# 🚜 OmniMow
 
-[![Build and Release OmniMow](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml)
+[![OmniMow CI/CD Rolling Release Pipeline](https://github.com/Ragsie/OmniMow/actions/workflows/build.yml/badge.badge.svg)](https://github.com/Ragsie/OmniMow/actions)
+[![Latest Release](https://img.shields.io/github/v/release/Ragsie/OmniMow?label=latest%20release)](https://github.com/Ragsie/OmniMow/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg)](#)
 
-A modern, fast control app built in Flutter for operating a custom autonomous robotic lawn mower. The app provides the primary interface between the user and the robot's ROS 2 backend through WebSockets.
+**OmniMow** is a high-performance, beautiful, and modular cross-platform mobile client built using Google's **Flutter** framework. It acts as a powerful controller and dashboard for autonomous DIY robotic lawn mowers, specifically designed to bridge seamlessly with a **ROS 2** and **OpenMow** robotic backend. 
 
-> **Alpha software:** This project is still in the alpha phase. Bugs, incomplete features, connection issues, and other unexpected behavior may occur. Use it for testing and development, and avoid relying on it for unattended production operation.
-
-The project is designed to handle an advanced hardware stack in which a Worx Landroid chassis has been rebuilt and upgraded with ESP32 microcontrollers, dual VESC controllers for precise motor control, and an RTK GNSS module for centimeter-level navigation.
-
-## ✨ Features
-
-* **Live Mapping:** Real-time display of the robot's position, route, and heading on an interactive canvas.
-* **Telemetry & Metrics:** Monitoring of vital system data such as battery level, progress, main controller CPU load, and RTK status (fix type and satellite count).
-* **Manual Control:** Quick-access buttons to start mowing, stop the machine, or send it directly home to the charging station.
-* **Schedule:** Intuitive setup of mowing schedules with selected weekdays and start times.
-* **Live Video Feed (WIP):** Prepared for WebRTC integration to display the robot's camera feed and YOLO-based computer vision output directly in the app.
-
-## 🛠️ Technology Stack
-
-* **Frontend:** [Flutter](https://flutter.dev/) & Dart (supports Android, iOS, Windows, and Web).
-* **Backend Communication:** WebSockets (JSON-based topic publishing/subscribing).
-* **Robot OS:** [OmniMow](https://github.com/Ragsie/OmniMow) (handles path planning, sensor fusion, and motor control).
+By leveraging real-time WebSockets, WebRTC, and local push notifications, OmniMow provides robotic lawn mower enthusiasts with a professional, comprehensive monitoring and control panel directly in their pocket.
 
 ---
 
-## 📥 Installation Guide
+## ✨ Core Features
 
-Find step-by-step guides on how to install and set up the app on your mobile devices in our Wiki documentation:
-* [How to install on Android (Wiki Docs)](https://github.com/Ragsie/OmniMow_App/wiki/Android-Installation)
-* [How to install on iPhone / iOS via Sideloadly (Wiki Docs)](https://github.com/Ragsie/OmniMow_App/wiki/iOS-Installation-Sideloadly)
-
-### Automated Builds & Releases via GitHub Actions
-The repository is configured with automated CI/CD workflows via GitHub Actions. Every push to the main branch automatically compiles both the Android APK and the iOS app, manages auto-incrementing build numbers based on commits, and publishes them directly to the repository's **Releases** page.
+* **🔌 Real-Time FastAPI WebSocket Connection (Port 8000):** Consumes an enriched, high-density JSON telemetry payload every second, including battery health metrics, system diagnostics, and motor power outputs.
+* **🗺️ RTK GNSS Path Mapping:** Projects centimeter-precise Latitude and Longitude coordinates onto a real-time local canvas grid map, drawing the exact path history of your mower as it cuts.
+* **🔋 Advanced Battery Management System (BMS) Monitoring:** Displays detailed real-time metrics for battery voltage ($V$), battery current ($A$), battery temperature ($°C$), and charge cycles.
+* **✂️ Cutter Motor Telemetry:** Keeps track of blade activity, cutter motor current (Amps), cutter RPM, power consumption (Watts), and triggers visual overload warnings for heavy grass.
+* **📹 WebRTC Live YOLOv26 Camera Feed (Port 8889):** Streams an ultra-low latency live video feed featuring YOLO computer vision object-detection overlays directly from your mower's camera.
+* **📅 Interactive Weekly Scheduler:** A built-in weekly calendar and time-picker interface allowing you to easily schedule cutting days and push the JSON schedule directly to the robot.
+* **🤖 Fleet Manager:** Easily save, name, edit, and delete multiple robotic mower IP addresses within a localized, persistent list using a clean pop-up dashboard.
+* **🔔 Smart Notification Service:** Triggers local push alerts for critical states like Low Battery (< 20%), Loss of RTK Centimeter Fix, Mower Stuck, Docking, or Charging. Includes fully customizable notification toggles.
+* **🔄 Seamless In-App Updates:** Features an intelligent self-updater utilizing semantical version checking via the GitHub API. It automatically detects, downloads, and launches APK installations for stable or rolling releases.
+* **🎨 Material 3 Dark/Light Themes:** Dynamically matches your phone's operating system theme (System, Dark, or Light Mode) with beautiful, glowing greenAccent highlight details.
 
 ---
 
@@ -41,43 +31,34 @@ The app is intended to work with the [OmniMow](https://github.com/Ragsie/OmniMow
 
 The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:9090`. The ROS 2 bridge must be running and reachable from the phone or device before the dashboard can be opened.
 
-## Implementation Notes
-* **ROS bridge:** A selected robot connects through `ws://<robot-ip>:9090`. Incoming messages are expected to use ROS topics such as `/battery_status`, `/rtk/status`, `/mower/status`, `/mower/metrics`, `/odom`, and `/gps/fix`.
-* **Commands:** Manual commands are published to `/mower/command`; schedules are published to `/mower/schedule` as JSON payloads.
-* **Notifications:** Notification preferences are stored locally with `shared_preferences` under the `notif_*` keys.
-* **Live video:** The WebRTC screen expects signaling on port `8889` at `/webrtc`. The signaling server and camera stream still need to be provided by the robot system.
-* **Position data:** The `/odom` and `/gps/fix` handlers are placeholders. Map coordinates must be mapped from the real ROS message format before live positioning is enabled.
-* **Built in app update on android, Ios will get a pop up.
 ---
 
-Acknowledgements & Credits
-As OmniMow is built to support and empower the amazing open-source and DIY robotics community, and we now accept donations, we would like to extend a huge thank you to the projects, libraries, and developers that have made this app possible. This project truly stands on the shoulders of giants:
+## 💖 Standing on the Shoulders of Giants
 
-Core Platforms & Projects
-ROS 2 (Robot Operating System) – The powerful middleware framework that manages the robot's logic, sensors, and actuators.
-Flutter & Dart – Google's incredible UI toolkit, enabling us to deliver a fast, modern, and responsive user interface for both Android and iOS.
-Hardware & Computer Vision
-VESC (Benjamin Vedder) – For the essential and widely-used open-source motor control system that delivers precise wheel and cutter motor control along with detailed telemetry.
-micro-ROS – Enabling the seamless integration of microcontrollers (like the ESP32) directly with the robot's ROS 2 backend.
-YOLO (You Only Look Once) – The state-of-the-art computer vision model that enables real-time, intelligent object detection directly within the robot's live video stream.
-Essential Flutter Packages (Dependencies)
-A special thanks to the developers of these open-source packages, which are critical to the application's core functionality:
+OmniMow is built to empower the open-source and DIY robotics community. We extend a huge thank you to:
+* **[OpenMow](https://github.com/ClemensElflein/openmow)** – The incredible pioneering DIY lawn mower firmware project.
+* **[ROS 2](https://www.ros.org/)** – The powerhouse framework behind robot logic and communication.
+* **[VESC](https://vesc-project.com/)** – Outstanding open motor controller technology and telemetry.
+* **[Flutter](https://flutter.dev/)** – Google's awesome UI framework.
 
-flutter_webrtc – Enables ultra-low latency live video streaming directly from the robot's camera.
-open_filex – Ensures the app can securely and seamlessly trigger downloaded APK updates on modern Android versions.
-web_socket_channel – Powers the robust WebSocket bridge connecting the mobile frontend to the robot's ROS 2 telemetry and manual controls.
-flutter_local_notifications – Handles the local push notification system on mobile devices, alerting users about low battery, lost RTK connections, or when the mower gets stuck.
-Distribution & Tooling
-Sideloadly – Simplifies sideloading and auto-updating the app on iOS devices for users without a paid Apple Developer account.
-GitHub Actions – Automates our entire CI/CD pipeline, signing release APKs, and auto-generating changelogs from commit histories.
+---
 
-## ☕ Support The Project
-If this project helped you or inspired your own build, consider buying me a cup of coffee. It would make my day and support me in developing more!
-please note that this project is, and will always remain, **100% free and open-source** under the **GNU GPLv3 License** in accordance with the licenses of our upstream dependencies.
+## ☕ Support the Development
 
-[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=ragsie&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://buymeacoffee.com/ragsie)
+If OmniMow made your lawn mower smarter or your DIY journey more enjoyable, please consider buying me a coffee to keep development alive and rolling!
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-yellow?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/ragsie)
 
 | Coin | QR | Address |
 | :-- | :--- | :---: |
 | **Bitcoin Cash** | <img width="160" height="161" alt="qrcode" src="https://github.com/user-attachments/assets/254aece9-8957-4d34-812c-885ac2e839fa" /> | `bitcoincash:qzp4c7klef8q6gxycvc84dx0fnhnfxkkpy6xda56h3` |
 | **Bitcoin** | <img width="160" height="162" alt="image" src="https://github.com/user-attachments/assets/e5b1cd3d-fd26-46fc-88db-2aa931b4f5d4" /> | `3QrAPVGC3aypf3LG5DYYRnjwjKuFMzkeJE` |
+
+---
+
+## 📖 Quick Links
+* **[Installation & Setup Guide](INSTALL.md)** - Learn how to install OmniMow on Android and iOS (Sideloading).
+* **[Consolidated Codebase](all_code_english_consolidated-v3.md)** - View the entire clean, compiled source code of the project.
+
+
+---
