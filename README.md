@@ -33,6 +33,13 @@ The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:909
 
 ---
 
+## 📖 Quick Links
+* **[Installation & Setup Guide](INSTALL.md)** - Learn how to install OmniMow on Android and iOS (Sideloading).
+* **[Consolidated Codebase](all_code_english_consolidated-v3.md)** - View the entire clean, compiled source code of the project.
+
+
+---
+
 ## 💖 Standing on the Shoulders of Giants
 
 OmniMow is built to empower the open-source and DIY robotics community. We extend a huge thank you to:
@@ -56,9 +63,3 @@ If OmniMow made your lawn mower smarter or your DIY journey more enjoyable, plea
 
 ---
 
-## 📖 Quick Links
-* **[Installation & Setup Guide](INSTALL.md)** - Learn how to install OmniMow on Android and iOS (Sideloading).
-* **[Consolidated Codebase](all_code_english_consolidated-v3.md)** - View the entire clean, compiled source code of the project.
-
-
----
