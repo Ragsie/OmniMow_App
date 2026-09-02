@@ -1,4 +1,4 @@
-name: NuroMow Release Pipeline
+name: NuroMow CI/CD Pipeline
 
 on:
   push:
@@ -9,9 +9,14 @@ on:
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 jobs:
-  build:
-    name: Build & Release NuroMow APK
+  # ==========================================
+  # JOB 1: BUILD SIGNED ANDROID APK
+  # ==========================================
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       # 1. Checkout the repository code
@@ -34,7 +39,7 @@ jobs:
         with:
           channel: 'stable'
           cache: true
-          cache-key: "flutter-:os:-:channel:-:version:-:arch:-:hash:" # Optimizes caching
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:-:hash:"
 
       # 4. Get Flutter Package Dependencies
       - name: Install Dependencies
@@ -44,11 +49,8 @@ jobs:
       - name: Extract Version Info
         id: version_info
         run: |
-          # Read version from pubspec.yaml (e.g. 1.0.0+1)
           VERSION_LINE=$(grep 'version: ' pubspec.yaml)
           VERSION_NAME=$(echo "$VERSION_LINE" | cut -d ' ' -f 2 | cut -d '+' -f 1)
-          
-          # Use GitHub's build run number as the unique build number
           BUILD_NUMBER=${{ github.run_number }}
           
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
@@ -62,13 +64,12 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "Error: KEYSTORE_BASE64 secret is missing!"
-            exit 1
+            echo "Warning: KEYSTORE_BASE64 secret is missing! Building unsigned/debug-signed APK instead."
+          else
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
           fi
-          # Decodes and writes the keystore file to the exact path expected by build.gradle.kts
-          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
 
-      # 7. Build Signed Release APK
+      # 7. Build Release APK (Uses secrets if available, falls back to debug signing if not)
       - name: Build APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -79,28 +80,107 @@ jobs:
             --build-name=$VERSION_NAME \
             --build-number=$BUILD_NUMBER
 
-      # 8. Rename the output APK to a professional branded filename
+      # 8. Rename output APK to a professional branded filename
       - name: Prepare APK Artifact
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/NuroMow-v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}.apk
 
-      # 9. Upload Built APK as a workflow run artifact (Always accessible on GitHub Actions)
+      # 9. Upload Built APK as a workflow run artifact (Always accessible in GitHub Actions)
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NuroMow-APK
+          name: NuroMow-Android-APK
           path: build/app/outputs/flutter-apk/NuroMow-v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}.apk
           if-no-files-found: error
           retention-days: 7
 
-      # 10. Create and Publish Release (Only runs when a version tag 'v*' is pushed)
+      # 10. Create and Publish Release (Only runs on tags OR manual workflow runs)
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}
+          name: "NuroMow v${{ env.VERSION_NAME }} (Build ${{ env.BUILD_NUMBER }})"
+          body: |
+            Automated release built from commit: ${{ github.sha }}
+            
+            ### Changelog
+            - Automated build containing the latest NuroMow mobile client updates.
           files: build/app/outputs/flutter-apk/NuroMow-v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}.apk
           draft: false
           prerelease: false
-          generate_release_notes: true # Automatically generates a beautiful changelog from commit messages
+          generate_release_notes: true # Generates beautiful changelogs from your commit messages
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Provided automatically by GitHub
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================
+  # JOB 2: BUILD UNSIGNED IOS BUNDLE (.ZIP)
+  # ==========================================
+  build-ios:
+    name: Build iOS Package
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    needs: build-android # Wait for Android job to create the release first (if releasing)
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Set up Flutter (Caches packages automatically)
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:-:hash:"
+
+      # 3. Get Flutter Package Dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 4. Extract Version Name from pubspec.yaml and set Build Number
+      - name: Extract Version Info
+        id: version_info
+        run: |
+          VERSION_LINE=$(grep 'version: ' pubspec.yaml)
+          VERSION_NAME=$(echo "$VERSION_LINE" | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          BUILD_NUMBER=${{ github.run_number }}
+          
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+
+      # 5. Build iOS App (No Codesign - free of developer account constraints)
+      - name: Build iOS App (No Codesign)
+        run: flutter build ios --release --no-codesign
+
+      # 6. Package iOS Runner.app into a ZIP for Sideloadly / AltStore
+      - name: Package iOS payload for sideloading
+        run: |
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload/
+          zip -r ../../../NuroMow-v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}-ios-unsigned.zip Payload
+          cd ../../../
+
+      # 7. Upload Built ZIP as a workflow run artifact (Always accessible in GitHub Actions)
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NuroMow-iOS-Unsigned-ZIP
+          path: NuroMow-v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}-ios-unsigned.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      # 8. Upload iOS ZIP to the same GitHub Release (Only runs on tags OR manual workflow runs)
+      - name: Upload iOS to Release
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}
+          files: NuroMow-v${{ env.VERSION_NAME }}-${{ env.BUILD_NUMBER }}-ios-unsigned.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
