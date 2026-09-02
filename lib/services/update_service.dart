@@ -8,45 +8,24 @@ import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class UpdateService {
-  // =========================================================================
-  // ⚠️ IMPORTANT: CHECK THESE TWO LINES!
-  // If your GitHub repository is still called "OpenMow-AI_app", but you have
-  // changed "repoName" to "NuroMow" here, the update will FAIL with a 404 error.
-  // The GitHub repository name does NOT change automatically when the app is renamed!
-  // =========================================================================
+  // TODO: REMEMBER TO CHANGE THESE IF YOUR GITHUB REPOSITORY HAS CHANGED NAME!
   static const String repoOwner = "Ragsie";
-  static const String repoName = "NuroMow-AI_app"; // Change to "NuroMow" ONLY IF you renamed your GitHub repository!
+  static const String repoName = "NuroMow"; // e.g. Change to "NuroMow" if your repo is renamed
 
   static Future<void> checkForUpdates(BuildContext context, {bool showNoUpdateDialog = false}) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final int currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
       final String currentVersion = packageInfo.version;
 
       final url = Uri.parse('https://api.github.com/repos/$repoOwner/$repoName/releases/latest');
-      
-      if (showNoUpdateDialog) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text("Checking $repoOwner/$repoName on GitHub..."),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
-
       final response = await http.get(url, headers: {'Accept': 'application/vnd.github.v3+json'});
 
       if (response.statusCode != 200) {
-        debugPrint("GitHub API error: ${response.statusCode} - ${response.body}");
-        if (context.mounted) {
-          scaffoldMessenger.showSnackBar(
-            SnackBar(
-              content: Text("API error (${response.statusCode}). Is the repository name '$repoName' correct?"),
-              backgroundColor: Colors.redAccent,
-              duration: const Duration(seconds: 5),
-            ),
+        debugPrint("GitHub API fejl: ${response.statusCode}");
+        if (showNoUpdateDialog && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Kunne ikke hente release. Er dit repo-navn rigtigt? (Status: ${response.statusCode})")),
           );
         }
         return;
@@ -57,7 +36,7 @@ class UpdateService {
       final String bodyText = releaseData['body'] ?? 'No changelog provided.';
       final String releaseHtmlUrl = releaseData['html_url'] ?? 'https://github.com/$repoOwner/$repoName/releases/latest';
 
-      // 1. Extract the build number (works for both "v1.0.63-63" and "v1.0.63")
+      // 1. Extract build number (works for both "v1.0.63-63" and "v1.0.63")
       int latestBuildNumber = 0;
       final dashMatch = RegExp(r'-(\d+)$').firstMatch(tagName);
       if (dashMatch != null) {
@@ -72,20 +51,7 @@ class UpdateService {
       debugPrint("Lokal Build: $currentBuildNumber | GitHub Release Build: $latestBuildNumber");
       debugPrint("Lokal Version: $currentVersion | GitHub Release Tag: $tagName");
 
-      // Show diagnostic information if the user clicked manually
-      if (showNoUpdateDialog && context.mounted) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              "Local: v$currentVersion ($currentBuildNumber) | GitHub: $tagName ($latestBuildNumber)",
-              style: const TextStyle(fontSize: 12),
-            ),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-
-      // 2. Perform a semantic version check
+      // 2. Lav et fuldstændig robust semantisk versionstjek
       if (_isNewerVersion(tagName, currentVersion, latestBuildNumber, currentBuildNumber)) {
         final List assets = releaseData['assets'] ?? [];
         final apkAsset = assets.firstWhere(
@@ -105,29 +71,23 @@ class UpdateService {
           );
         }
       } else if (showNoUpdateDialog && context.mounted) {
-        scaffoldMessenger.showSnackBar(
-          const SnackBar(
-            content: Text("NuroMow is fully up to date! You have the latest version."),
-            backgroundColor: Colors.green,
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Du har allerede den nyeste version installeret!")),
         );
       }
     } catch (e) {
-      debugPrint("Error while checking for updates: $e");
-      if (context.mounted) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text("Network error or unexpected error: $e"),
-            backgroundColor: Colors.redAccent,
-          ),
+      debugPrint("Fejl ved tjek efter opdatering: $e");
+      if (showNoUpdateDialog && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Fejl ved tjek: $e")),
         );
       }
     }
   }
 
-  // Robust comparison algorithm that checks both version strings and build numbers
+  // Robust comparison algorithm checking both version strings and build numbers
   static bool _isNewerVersion(String latestTag, String currentVersion, int latestBuild, int currentBuild) {
-    // Remove everything except numbers and dots from strings (e.g. "v1.0.63-63" -> "1.0.63")
+    // Clean strings of anything except digits and dots
     final String cleanLatest = latestTag.split('-').first.replaceAll(RegExp(r'[^0-9.]'), '');
     final String cleanCurrent = currentVersion.replaceAll(RegExp(r'[^0-9.]'), '');
 
@@ -138,7 +98,7 @@ class UpdateService {
     final List<int> latestParts = cleanLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
     final List<int> currentParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
-    // Make the lists equal in length by padding with zeros (e.g. "1.1" vs "1.0.63")
+    // Ensure lists are of equal length by filling up with 0s
     final int maxLen = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
     while (latestParts.length < maxLen) latestParts.add(0);
     while (currentParts.length < maxLen) currentParts.add(0);
@@ -149,7 +109,7 @@ class UpdateService {
       if (latestParts[i] < currentParts[i]) return false;
     }
 
-    // If the semantic version numbers are completely identical, fall back to the build number
+    // If the semantic version numbers are identical, fall back to build number
     return latestBuild > currentBuild;
   }
 
@@ -164,7 +124,7 @@ class UpdateService {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text("New update found ($version)"),
+        title: Text("Ny opdatering fundet ($version)"),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,7 +160,7 @@ class UpdateService {
                 _downloadAndInstallApk(context, apkDownloadUrl);
               }
             },
-            child: Text(Platform.isIOS ? "Open Release" : "Update now"),
+            child: Text(Platform.isIOS ? "Open Release" : "Update Now"),
           ),
         ],
       ),
@@ -224,7 +184,7 @@ class UpdateService {
 
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/update.apk');
-      
+
       if (await file.exists()) {
         await file.delete();
       }
@@ -238,12 +198,12 @@ class UpdateService {
 
       if (result.type != ResultType.done) {
         scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text("Could not start the installation: ${result.message}")),
+          SnackBar(content: Text("Could not start installation: ${result.message}")),
         );
       }
     } catch (e) {
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Installation error: $e")),
+        SnackBar(content: Text("Fejl under installation: $e")),
       );
     }
   }

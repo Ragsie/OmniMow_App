@@ -69,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // --- THEME SETTINGS ---
-          const Text("Appearance", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          const Text("Udseende", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: ValueListenableBuilder<ThemeMode>(
@@ -96,16 +96,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // --- NOTIFICATION OPTIONS ---
-          const Text("Choose Notifications", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          // --- NOTIFICATION PREFERENCES ---
+          const Text("Vælg Notifikationer", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Column(
               children: [
                 SwitchListTile(
                   secondary: const Icon(Icons.battery_alert, color: Colors.orange),
-                  title: const Text("Low battery"),
-                  subtitle: const Text("Notify when the battery drops below 20%"),
+                  title: const Text("Low Battery"),
+                  subtitle: const Text("Alert when battery drops below 20%"),
                   value: _notifBattery,
                   onChanged: (val) {
                     setState(() => _notifBattery = val);
@@ -115,8 +115,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.satellite_alt, color: Colors.redAccent),
-                  title: const Text("RTK / GNSS status"),
-                  subtitle: const Text("Warn if it loses its fix"),
+                  title: const Text("RTK / GNSS Status"),
+                  subtitle: const Text("Warning if GPS loses its Fix"),
                   value: _notifRtk,
                   onChanged: (val) {
                     setState(() => _notifRtk = val);
@@ -126,8 +126,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.home, color: Colors.blueAccent),
-                  title: const Text("Returning home / Docking"),
-                  subtitle: const Text("When the mower is driving back to the dock"),
+                  title: const Text("Returning Home / Docking"),
+                  subtitle: const Text("When the machine is heading to the charger"),
                   value: _notifDocking,
                   onChanged: (val) {
                     setState(() => _notifDocking = val);
@@ -137,8 +137,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.bolt, color: Colors.amber),
-                  title: const Text("Charging status"),
-                  subtitle: const Text("When the mower is connected to power"),
+                  title: const Text("Charging Status"),
+                  subtitle: const Text("When the machine is receiving power"),
                   value: _notifCharging,
                   onChanged: (val) {
                     setState(() => _notifCharging = val);
@@ -149,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SwitchListTile(
                   secondary: const Icon(Icons.warning, color: Colors.red),
                   title: const Text("Stuck"),
-                  subtitle: const Text("Critical warning if it stops and cannot continue"),
+                  subtitle: const Text("Critical alert if the robot stops and is unable to proceed"),
                   value: _notifStuck,
                   onChanged: (val) {
                     setState(() => _notifStuck = val);
@@ -161,15 +161,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // --- ABOUT THE APP, UPDATES & CREDITS ---
-          const Text("About the App", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+          // --- ABOUT APP, UPDATES & CREDITS ---
+          const Text("Om Appen", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.info_outline),
-                  title: const Text("OpenMow AI"),
+                  title: const Text("NuroMow"),
                   subtitle: Text("Version: $_appVersion${_buildNumber.isNotEmpty ? ' (Build $_buildNumber)' : ''}"),
                 ),
                 const Divider(height: 1),
@@ -185,8 +185,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.favorite_border, color: Colors.pinkAccent),
-                  title: const Text("Credits & Contributors"),
-                  subtitle: const Text("View source credits and support development"),
+                  title: const Text("Credits & Attributions"),
+                  subtitle: const Text("View open-source attributions and support development"),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     showDialog(
@@ -208,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.system_update),
-                      label: Text(_isCheckingUpdate ? "Checking..." : "Check for updates now"),
+                      label: Text(_isCheckingUpdate ? "Checking..." : "Check for Updates"),
                       onPressed: _isCheckingUpdate
                           ? null
                           : () async {

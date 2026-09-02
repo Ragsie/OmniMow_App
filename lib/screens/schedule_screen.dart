@@ -11,7 +11,7 @@ class ScheduleScreen extends StatefulWidget {
 class _ScheduleScreenState extends State<ScheduleScreen> {
   TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
   final List<String> _weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  final Set<String> _selectedDays = {'Mon', 'Wed', 'Fri'}; // Default selection
+  final Set<String> _selectedDays = {'Mon', 'Wed', 'Fri'}; // Standardvalg
 
   Future<void> _pickTime() async {
     final TimeOfDay? picked = await showTimePicker(
@@ -56,7 +56,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
             const SizedBox(height: 30),
 
-            const Text("Select Weekdays", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Select Days of the Week", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8.0,
@@ -82,9 +82,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 onPressed: () {
                   rosService.saveSchedule(_selectedDays.toList(), _selectedTime);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Schedule saved and sent to the mower!")),
+                    const SnackBar(content: Text("Schedule saved and sent to the robot!")),
                   );
-                  Navigator.pop(context); // Return to the dashboard
+                  Navigator.pop(context); // Gå tilbage til Dashboard
                 },
               ),
             ),

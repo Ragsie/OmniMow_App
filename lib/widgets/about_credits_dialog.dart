@@ -34,12 +34,12 @@ class AboutCreditsDialog extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Version 2.1.0 (Alpha)\nBuilt for the amazing DIY robot community.',
+              'Version 2.1.0 (Alpha)\nBuilt for the amazing DIY robotics community.',
               style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
             ),
             const Divider(height: 24),
             const Text(
-              'This project stands on the shoulders of giants. A big thank you to the amazing open-source projects and developers behind it:',
+              'This project stands on the shoulders of giants. A huge thank you to the amazing open-source projects and developers behind them:',
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 16),
@@ -48,17 +48,17 @@ class AboutCreditsDialog extends StatelessWidget {
             _buildSectionHeader(context, 'Platforms & Foundations'),
             _buildCreditItem(
               title: 'OpenMow / worx-ros2-mower',
-              subtitle: 'The amazing open-source Landroid DIY control project.',
+              subtitle: 'The pioneering open-source DIY lawnmower project.',
               url: 'https://github.com/ClemensElflein/openmow',
             ),
             _buildCreditItem(
               title: 'ROS 2 (Robot Operating System)',
-              subtitle: 'The foundation and control logic for the robot backend.',
+              subtitle: 'The core middleware and control logic of the robot backend.',
               url: 'https://www.ros.org/',
             ),
             _buildCreditItem(
               title: 'Flutter & Dart',
-              subtitle: 'Google\'s amazing framework for beautiful mobile interfaces.',
+              subtitle: 'Google UI toolkit for fast, beautiful mobile interfaces.',
               url: 'https://flutter.dev/',
             ),
 
@@ -66,30 +66,30 @@ class AboutCreditsDialog extends StatelessWidget {
             _buildSectionHeader(context, 'Hardware & Computer Vision'),
             _buildCreditItem(
               title: 'VESC (Benjamin Vedder)',
-              subtitle: 'Professional and widely used motor control and telemetry technology.',
+              subtitle: 'Open-source motor controller with precise telemetry.',
               url: 'https://vesc-project.com/',
             ),
             _buildCreditItem(
               title: 'micro-ROS',
-              subtitle: 'Fast microcontroller integration for devices like the ESP32.',
+              subtitle: 'ESP32 microcontroller integration directly to ROS 2.',
               url: 'https://micro.ros.org/',
             ),
             _buildCreditItem(
               title: 'YOLO (You Only Look Once)',
-              subtitle: 'The computer vision model behind the robot\'s grass-edge detection.',
+              subtitle: 'State-of-the-art object detection in the live video stream.',
               url: 'https://github.com/ultralytics/yolov8',
             ),
 
-            // Core Flutter libraries
-            _buildSectionHeader(context, 'Key Flutter Libraries'),
+            // Centrale Flutter-biblioteker
+            _buildSectionHeader(context, 'Core Flutter Packages'),
             _buildCreditItem(
               title: 'flutter_webrtc',
-              subtitle: 'Ultra-low latency for the robot\'s live YOLO video stream.',
+              subtitle: 'Ultra-low latency live video streaming from the robot.',
               url: 'https://pub.dev/packages/flutter_webrtc',
             ),
             _buildCreditItem(
               title: 'open_filex',
-              subtitle: 'Enables safe in-app APK update installation.',
+              subtitle: 'Ensures secure, in-app APK updates on Android.',
               url: 'https://pub.dev/packages/open_filex',
             ),
             _buildCreditItem(
@@ -99,15 +99,15 @@ class AboutCreditsDialog extends StatelessWidget {
             ),
             _buildCreditItem(
               title: 'flutter_local_notifications',
-              subtitle: 'Triggers local push notifications when action is required.',
+              subtitle: 'Handles local notifications on mobile for critical warnings.',
               url: 'https://pub.dev/packages/flutter_local_notifications',
             ),
 
             // Sideloadly
-            _buildSectionHeader(context, 'Distribution'),
+            _buildSectionHeader(context, 'Distribution & Tooling'),
             _buildCreditItem(
               title: 'Sideloadly',
-              subtitle: 'Makes it easy for our iOS users to run the app without the App Store.',
+              subtitle: 'Simplifies sideloading and auto-updating on iOS devices.',
               url: 'https://sideloadly.io/',
             ),
           ],
@@ -115,13 +115,13 @@ class AboutCreditsDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => _launchURL('https://buymeacoffee.com/ragsie'), // Insert your link here!
+          onPressed: () => _launchURL('https://buymeacoffee.com/ragsie'), // Indsæt dit link her!
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.favorite, color: Colors.red[400], size: 16),
               const SizedBox(width: 4),
-              const Text('Support with a donation'),
+              const Text('Support with a Donation'),
             ],
           ),
         ),

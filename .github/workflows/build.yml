@@ -1,4 +1,4 @@
-name: Build and Release OpenMow AI
+name: Build and Release NuroMow AI
 
 on:
   workflow_dispatch: # Only triggers manually to prevent unwanted micro-builds

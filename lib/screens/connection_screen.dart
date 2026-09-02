@@ -32,7 +32,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     super.initState();
     _loadRobots();
 
-    // Check for in-app GitHub updates as soon as the app starts.
+    // Checks for in-app updates on GitHub the moment the app starts!
     WidgetsBinding.instance.addPostFrameCallback((_) {
       UpdateService.checkForUpdates(context);
     });
@@ -75,7 +75,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   void _connectToRobot(String name, String ip) async {
-    // Save the selected IP so WebRTC can access it later.
+    // Saves the selected IP so WebRTC can access it later
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('robot_ip', ip);
 
@@ -83,7 +83,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     if (!mounted) return;
 
-    // Clear the stack and force a fresh dashboard load.
+    // Clears the stack and forces a fresh Dashboard load
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const DashboardScreen()),
@@ -99,7 +99,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(robotToEdit == null ? "Add new mower" : "Edit mower"),
+          title: Text(robotToEdit == null ? "Add New Robot" : "Edit Robot"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -114,7 +114,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               TextField(
                 controller: ipController,
                 decoration: const InputDecoration(
-                  labelText: "IP address (e.g. 192.168.1.50)",
+                  labelText: "IP Address (e.g. 192.168.1.50)",
                   prefixIcon: Icon(Icons.wifi),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -166,7 +166,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   Icon(Icons.precision_manufacturing, size: 80, color: Colors.grey.shade700),
                   const SizedBox(height: 16),
                   const Text(
-                    "No mowers found.\nTap 'Add' to create one.",
+                    "No robots found.\nPress 'Add' to create one.",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),

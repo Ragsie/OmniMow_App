@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'ros_service.dart'; // Import to read the active robot IP
+import 'ros_service.dart'; // Importer to read the active robot IP
 
 class LiveFeedScreen extends StatefulWidget {
   const LiveFeedScreen({super.key});
@@ -36,7 +36,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
 
   Future<void> _connectWebRTC() async {
     try {
-      // Gets the active robot IP directly from the central ROS Service!
+      // Fetches the active robot IP directly from the central ROS Service!
       final robotIp = rosService.currentIp;
 
       if (robotIp.isEmpty) {
@@ -60,7 +60,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
         }
       };
 
-      // Connects the WebRTC signaling to port 8889 on the robot's FastAPI/MediaMTX service
+      // Connects WebRTC signaling to port 8889 on the robot's FastAPI/MediaMTX service
       final signalingUrl = 'ws://$robotIp:8889/webrtc';
       _signalingChannel = WebSocketChannel.connect(Uri.parse(signalingUrl));
 
@@ -108,7 +108,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
 
   @override
   void dispose() {
-    // Closes and cuts the stream completely as soon as you go back to Dashboard!
+    // Lukker og klipper streamen fuldstændig, så snart man går tilbage til Dashboard!
     _signalingChannel?.sink.close();
     _peerConnection?.close();
     _peerConnection?.dispose();
@@ -120,7 +120,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("YOLO Camera Feed")),
-      backgroundColor: Colors.black, // Makes the video stream look better
+      backgroundColor: Colors.black, // Gør videostrømmen flottere
       body: Center(
         child: _isRendererInitialized
             ? RTCVideoView(

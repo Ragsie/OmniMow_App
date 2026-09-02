@@ -8,7 +8,7 @@ import 'screens/settings_screen.dart';
 import 'services/notification_service.dart';
 import 'screens/nerd_metrics_screen.dart';
 
-// Global ValueNotifier for light/dark theme (starts with system default)
+// Global ValueNotifier for light/dark theme (Starts as system default)
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 void main() async {
@@ -27,12 +27,12 @@ class RobotApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, currentMode, _) {
         return MaterialApp(
-          title: 'OpenMow AI',
+          title: 'NuroMow',
           debugShowCheckedModeBanner: false,
           theme: ThemeData.light(useMaterial3: true),
           darkTheme: ThemeData.dark(useMaterial3: true),
           themeMode: currentMode,
-          home: const ConnectionScreen(), // Start on the ConnectionScreen
+          home: const ConnectionScreen(), // Starts on ConnectionScreen
         );
       }
     );
@@ -50,8 +50,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Start the offline simulator. Remove or comment this out when connecting to the real robot.
-    //rosService.startSimulation();
+    // Starts the offline simulator. Delete or comment this out when connecting to the real robot!
+    rosService.startSimulation();
   }
 
   @override
@@ -103,7 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 1. Live canvas mapping (optimized for a tall view)
+            // 1. Live canvas mapping (Optimized high height)
             SizedBox(
               height: 380,
               width: double.infinity,
@@ -124,7 +124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 2. Battery & progress status cards
+            // 2. Battery & Progress status cards
             ListenableBuilder(
               listenable: rosService,
               builder: (context, _) {
@@ -146,14 +146,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 3. Aktiv handling boks
+            // 3. Active operation box
             ListenableBuilder(
               listenable: rosService,
               builder: (context, _) {
                 return Card(
                   child: ListTile(
                     leading: const Icon(Icons.info_outline, color: Colors.greenAccent),
-                    title: const Text("Current Action", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: const Text("Active Operation", style: TextStyle(fontSize: 12, color: Colors.grey)),
                     subtitle: Text(
                       rosService.mowerState.toUpperCase(),
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -234,7 +234,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// Helper widget for status cards on the dashboard
+// Helper widget for status cards on Dashboard
 class StatusCard extends StatelessWidget {
   final String title;
   final String value;

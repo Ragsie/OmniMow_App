@@ -42,7 +42,7 @@ class RosService extends ChangeNotifier {
   double currentX = 0.0;
   double currentY = 0.0;
 
-  // History list of all points the robot has driven through (the trail)
+  // History list of all coordinates driven through (Track)
   final List<Offset> pathHistory = [];
 
   // For GPS Projection to Local Meters
@@ -98,7 +98,7 @@ class RosService extends ChangeNotifier {
     currentName = name;  
     currentIp = ip;
     // Updated to Port 8000 and /ws endpoint for the optimized FastAPI backend
-    final url = 'ws://\$ip:8000/ws';
+    final url = 'ws://$ip:8000/ws';
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(url));
@@ -116,7 +116,7 @@ class RosService extends ChangeNotifier {
     }
   }
 
-  // Helper to map state code to human-readable text
+  // Helper to map state code to human readable text
   String _mapStateCodeToString(int code) {
     switch (code) {
       case 0:
@@ -136,7 +136,7 @@ class RosService extends ChangeNotifier {
       case 7:
         return "SEEKING EDGE";
       default:
-        return "Unknown state ($code)";
+        return "Ukendt tilstand ($code)";
     }
   }
 
@@ -163,7 +163,7 @@ class RosService extends ChangeNotifier {
         notificationService.showWarning(
           id: 2,
           title: "GNSS Warning",
-          body: "Lost RTK centimeter fix! Current status: $rtkStatus."
+          body: "Mistet RTK Centimeter-Fix! Nuværende status: $rtkStatus."
         );
         _hasWarnedRtk = true;
       } else if (rtkCode == 3) {
@@ -186,7 +186,7 @@ class RosService extends ChangeNotifier {
         notificationService.showWarning(
           id: 1,
           title: "Low Battery!",
-          body: "NuroMow has only ${batteryLevel.toInt()}% power remaining."
+          body: "NuroMow has only ${batteryLevel.toInt()}% battery remaining."
         );
         _hasWarnedBattery = true;
       } else if (batteryLevel > 25.0) {
@@ -194,13 +194,13 @@ class RosService extends ChangeNotifier {
       }
     }
 
-    // 3. Parse system state
+    // 3. Parse System State
     if (data.containsKey('state')) {
       int stateCode = data['state'] as int? ?? 0;
       mowerState = _mapStateCodeToString(stateCode);
 
       // Check State-based warnings
-      // State 4 = STUCK
+      // State 4 = STUCK / SIDDER FAST
       bool allowStuck = prefs.getBool('notif_stuck') ?? true;
       if (stateCode == 4 && !_hasWarnedStuck && allowStuck) {
         notificationService.showWarning(
@@ -213,12 +213,12 @@ class RosService extends ChangeNotifier {
         _hasWarnedStuck = false;
       }
 
-      // State 2 = DOCKING / RETURNING TO DOCK
+      // State 2 = DOCKING / SØGER DOCK
       bool allowDocking = prefs.getBool('notif_docking') ?? false;
       if (stateCode == 2 && !_hasWarnedDocking && allowDocking) {
         notificationService.showWarning(
           id: 3,
-          title: "Returning Home",
+          title: "NuroMow Alerts",
           body: "The machine is driving back to the docking station."
         );
         _hasWarnedDocking = true;
@@ -226,7 +226,7 @@ class RosService extends ChangeNotifier {
         _hasWarnedDocking = false;
       }
 
-      // State 3 = CHARGING
+      // State 3 = CHARGING / OPLADER
       bool allowCharging = prefs.getBool('notif_charging') ?? false;
       if (stateCode == 3 && !_hasWarnedCharging && allowCharging) {
         notificationService.showWarning(
@@ -277,7 +277,7 @@ class RosService extends ChangeNotifier {
   void sendCommand(String command) {
     if (!isConnected) return;
 
-    debugPrint("Command sent to robot: \$command");
+    debugPrint("Command sent to robot: $command");
 
     // Direct FastAPI WebSocket payload
     final msg = {
@@ -295,7 +295,7 @@ class RosService extends ChangeNotifier {
       'minute': time.minute,
     };
 
-    debugPrint("Schedule saved and sent: \$scheduleData");
+    debugPrint("Schedule saved and sent: $scheduleData");
 
     final msg = {
       'schedule': scheduleData
@@ -304,63 +304,63 @@ class RosService extends ChangeNotifier {
   }
 
   // --- SIMULATOR ---
-  // Timer? _simTimer;
-  // double _simHeading = 0.0;
-  //
-  // void startSimulation() {
-  //   isConnected = true;
-  //   rtkStatus = "RTK Centimeter Fix (Perfect)";
-  //   satellites = 24;
-  //   cpuLoad = "42.0% (45.0°C)";
-  //   bladeActive = true;
-  //   cutterAmps = 4.2;
-  //   cutterRpm = 2850;
-  //   cutterPowerWatts = 43.6;
-  //   totalDistanceKm = 12.5;
-  //   totalMowingMinutes = 145;
-  //   operatingMinutes = 145;
-  //   chargeCycles = 12;
-  //   cpuTemp = 45.0;
-  //   batteryVoltage = 24.2;
-  //   batteryCurrent = -3.2;
-  //   batteryTemp = 28.5;
-  //
-  //   if (currentX == 0 && currentY == 0) {
-  //     currentX = 150.0;
-  //     currentY = 150.0;
-  //   }
-  //
-  //   _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-  //     _simHeading += 0.05;
-  //     double speed = 2.0;
-  //
-  //     double newX = currentX + (speed * math.cos(_simHeading));
-  //     double newY = currentY + (speed * math.sin(_simHeading));
-  //
-  //     updatePosition(newX, newY);
-  //
-  //     batteryLevel = math.max(0.0, batteryLevel - 0.01);
-  //     progress = math.min(100.0, progress + 0.05);
-  //
-  //     // Dynamic battery telemetry simulations for the metrics screen
-  //     batteryVoltage = 18.0 + (batteryLevel / 100.0) * 7.2; // Ranges from 18.0V (empty) to 25.2V (full)
-  //     batteryCurrent = -2.0 - (math.sin(_simHeading * 2.0) * 1.5); // Fluctuates between -0.5A and -3.5A while operating
-  //     batteryTemp = 25.0 + (100.0 - batteryLevel) * 0.1 + (math.cos(_simHeading) * 0.2); // Temperature rises slightly as the battery discharges
-  //
-  //     // Also simulate blade load
-  //     cutterAmps = 3.5 + (math.sin(_simHeading * 5.0) * 1.2);
-  //     if (cutterAmps < 0) cutterAmps = 0.0;
-  //     cutterPowerWatts = cutterAmps * batteryVoltage;
-  //   });
-  // }
+  Timer? _simTimer;
+  double _simHeading = 0.0;
+
+  void startSimulation() {
+    isConnected = true;
+    rtkStatus = "RTK Centimeter-Fix (Perfect)";
+    satellites = 24;
+    cpuLoad = "42.0% (45.0°C)";
+    bladeActive = true;
+    cutterAmps = 4.2;
+    cutterRpm = 2850;
+    cutterPowerWatts = 43.6;
+    totalDistanceKm = 12.5;
+    totalMowingMinutes = 145;
+    operatingMinutes = 145;
+    chargeCycles = 12;
+    cpuTemp = 45.0;
+    batteryVoltage = 24.2;
+    batteryCurrent = -3.2;
+    batteryTemp = 28.5;
+
+    if (currentX == 0 && currentY == 0) {
+      currentX = 150.0;
+      currentY = 150.0;
+    }
+
+    _simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      _simHeading += 0.05;
+      double speed = 2.0;
+
+      double newX = currentX + (speed * math.cos(_simHeading));
+      double newY = currentY + (speed * math.sin(_simHeading));
+
+      updatePosition(newX, newY);
+
+      batteryLevel = math.max(0.0, batteryLevel - 0.01);
+      progress = math.min(100.0, progress + 0.05);
+
+      // Dynamic simulation of battery telemetry for the metrics screen
+      batteryVoltage = 18.0 + (batteryLevel / 100.0) * 7.2; // Går fra 18.0V (tomt) til 25.2V (fuldt)
+      batteryCurrent = -2.0 - (math.sin(_simHeading * 2.0) * 1.5); // Fluktuerer mellem -0.5A og -3.5A under drift
+      batteryTemp = 25.0 + (100.0 - batteryLevel) * 0.1 + (math.cos(_simHeading) * 0.2); // Stiger let i temperatur som batteriet aflades
+
+      // Also simulate blade load
+      cutterAmps = 3.5 + (math.sin(_simHeading * 5.0) * 1.2);
+      if (cutterAmps < 0) cutterAmps = 0.0;
+      cutterPowerWatts = cutterAmps * batteryVoltage;
+    });
+  }
 
   @override
   void dispose() {
-  //  _simTimer?.cancel();
+    _simTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
 }
 
-// Global instance for the entire app
+// Global instans til hele appen
 final rosService = RosService();
