@@ -1,7 +1,7 @@
 # 🚜 OmniMow
 
-[![OmniMow CI/CD Rolling Release Pipeline](https://github.com/Ragsie/OmniMow/actions/workflows/build.yml/badge.badge.svg)](https://github.com/Ragsie/OmniMow/actions)
-[![Latest Release](https://img.shields.io/github/v/release/Ragsie/OmniMow?label=latest%20release)](https://github.com/Ragsie/OmniMow/releases/latest)
+[![OmniMow CI/CD Rolling Release Pipeline](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.badge.svg)](https://github.com/Ragsie/OmniMow_App/actions)
+[![Latest Release](https://img.shields.io/github/v/release/Ragsie/OmniMow_App?label=latest%20release)](https://github.com/Ragsie/OmniMow_App/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg)](#)
 
 **OmniMow** is a high-performance, beautiful, and modular cross-platform mobile client built using Google's **Flutter** framework. It acts as a powerful controller and dashboard for autonomous DIY robotic lawn mowers, specifically designed to bridge seamlessly with a **ROS 2** and **OpenMow** robotic backend. 
