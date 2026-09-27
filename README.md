@@ -1,52 +1,71 @@
 # 🚜 OmniMow
 
-[![OmniMow CI/CD Rolling Release Pipeline](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml)
-[![Latest Release](https://img.shields.io/github/v/release/Ragsie/OmniMow_App?label=latest%20release)](https://github.com/Ragsie/OmniMow_App/releases/latest)
+
+
+[![OmniMow CI/CD Rolling Release Pipeline](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.badge.svg)](https://github.com/Ragsie/OmniMow_App/actions)
+[![Latest Release](https://img.shields.io/github/v/release/Ragsie/OmniMow?label=latest%20release)](https://github.com/Ragsie/OmniMow_App/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg)](#)
 
-**OmniMow** is a high-performance, beautiful, and modular cross-platform mobile client built using Google's **Flutter** framework. It acts as a powerful controller and dashboard for autonomous DIY robotic lawn mowers, specifically designed to bridge seamlessly with a **ROS 2** and **OmniMow** robotic backend. 
 
-By leveraging real-time WebSockets, WebRTC, and local push notifications, OmniMow provides robotic lawn mower enthusiasts with a professional, comprehensive monitoring and control panel directly in their pocket.
+**OmniMow** is a premium, high-performance, and modular cross-platform mobile client built using Google's **Flutter** framework. It is engineered as a state-of-the-art dashboard and controller for autonomous DIY robotic lawn mowers, bridging seamlessly with a **ROS 2** and **OpenMow** robotic backend.
 
----
-
-## ✨ Core Features
-
-* **🔌 Real-Time FastAPI WebSocket Connection (Port 8000):** Consumes an enriched, high-density JSON telemetry payload every second, including battery health metrics, system diagnostics, and motor power outputs.
-* **🗺️ RTK GNSS Path Mapping:** Projects centimeter-precise Latitude and Longitude coordinates onto a real-time local canvas grid map, drawing the exact path history of your mower as it cuts.
-* **🔋 Advanced Battery Management System (BMS) Monitoring:** Displays detailed real-time metrics for battery voltage ($V$), battery current ($A$), battery temperature ($°C$), and charge cycles.
-* **✂️ Cutter Motor Telemetry:** Keeps track of blade activity, cutter motor current (Amps), cutter RPM, power consumption (Watts), and triggers visual overload warnings for heavy grass.
-* **📹 WebRTC Live YOLOv26 Camera Feed (Port 8889):** Streams an ultra-low latency live video feed featuring YOLO computer vision object-detection overlays directly from your mower's camera.
-* **📅 Interactive Weekly Scheduler:** A built-in weekly calendar and time-picker interface allowing you to easily schedule cutting days and push the JSON schedule directly to the robot.
-* **🤖 Fleet Manager:** Easily save, name, edit, and delete multiple robotic mower IP addresses within a localized, persistent list using a clean pop-up dashboard.
-* **🔔 Smart Notification Service:** Triggers local push alerts for critical states like Low Battery (< 20%), Loss of RTK Centimeter Fix, Mower Stuck, Docking, or Charging. Includes fully customizable notification toggles.
-* **🔄 Seamless In-App Updates:** Features an intelligent self-updater utilizing semantical version checking via the GitHub API. It automatically detects, downloads, and launches APK installations for stable or rolling releases.
-* **🎨 Material 3 Dark/Light Themes:** Dynamically matches your phone's operating system theme (System, Dark, or Light Mode) with beautiful, glowing greenAccent highlight details.
+This latest version features a **comprehensive premium UI Overhaul** inspired directly by the luxury **Segway Navimow** design aesthetic, introducing a fully integrated glassmorphic (frosted glass) interface, dark/light theme optimization, and intelligent network-level auto-discovery.
 
 ---
 
-## OmniMow Backend
+## ✨ Premium Highlights
 
-The app is intended to work with the [OmniMow](https://github.com/Ragsie/OmniMow) project. That repository contains the ROS 2 mower-side software and is the place to configure the robot, its sensors, navigation, and hardware controllers.
+### 🎨 Segway Navimow UI Overhaul
+* **Glassmorphic HUD Design:** Widgets, controls, and telemetry pills float gracefully on premium frosted glass cards (`GlassCard`) utilizing dynamic, real-time background blurring (`BackdropFilter`).
+* **Material 3 Light & Dark Themes:** Fully optimized themes that adapt seamlessly:
+  * *Light Mode:* Premium off-white backdrop (`0xFFF5F6FA`) with deep slate typography, translucent white glass cards, and vivid emerald-green accents.
+  * *Dark Mode:* Deep midnight-charcoal backdrop (`0xFF0C0C0E`) with frosted dark matte cards and glowing neon-green highlights.
+* **Map-First Experience:** The interactive map covers the entire viewport, transforming the device into a spatial control deck.
 
-The Flutter app connects to the robot's WebSocket bridge at `ws://<robot-ip>:9090`. The ROS 2 bridge must be running and reachable from the phone or device before the dashboard can be opened.
+### 📡 Intelligent Auto-Discovery Onboarding (First-Run)
+* **Zero-Configuration Setup:** On its very first launch (when the mower list is empty), the app boots directly into an automated onboarding radar-scanning screen.
+* **Asynchronous Subnet Scanning:** Performs extremely fast, concurrent network-level socket checks across active subnets (scanning IP addresses sequentially on the optimized FastAPI **port 8000**).
+* **Throttling & Timeout protection:** Features a strict 5-second scanner timeout. Throttling is applied to UI updates (every 8 IPs) to maintain a perfectly smooth, jitter-free **60 FPS radar animation**.
+* **One-Tap Guided Setup:** Instantly detects active mowers, prompts the user to name them, saves them persistently in shared preferences, and routes straight to the live dashboard.
+* **Seamless Fallback:** Instantly falls back to a clean manual configuration if no robot is discovered automatically.
+
+### 🗺️ Map-First Infinite Technical Grid
+* **No Solid Green Blocks:** Replaced the heavy, solid green boundary blocks with a completely open, technical layout.
+* **Infinite Blueprint Grid:** Features an elegant, subdued technical grid background (4% visibility) that dynamically updates on zoom/pan via `InteractiveViewer`.
+* **Docking Station Anchor:** Draws an elegant reference point (blue-glowing node) right in the center of the grid map.
+* **Pulsing GPS Beacon & Radar Halo:** The active robot is represented as a white pearl surrounded by a large, pulsing green radar circle indicating centimeter-accurate RTK-GPS status.
+* **Real-Time Direction Arrow:** Calculates moving segments dynamically to draw a sharp directional arrow on top of the robot, indicating its exact heading.
+
+### 🔋 Diagnostics & Nerd Metrics
+* **Cutter Motor Load Telemetry:** Monitors blade activation, real-time current draw (Amps), rotational speed (RPM), and active power wattage (W) with a dynamic load bar indicator.
+* **BMS Battery System Diagnostics:** Live transparency of battery health including exact voltage, charging/discharging current, operating temperature (°C), and total charge cycles.
+* **Operating Statistics:** Tracks total distance traveled (km), runtime hours, and system CPU diagnostic loads.
+
+---
+
+## 🛠️ Complete Feature Registry
+
+* **🔌 Real-Time FastAPI WebSockets:** Feeds high-density JSON telemetry directly to the client every second.
+* **📹 WebRTC Live YOLO Camera Feed (Port 8889):** Streams an ultra-low latency live video signal from the mower with YOLO computer vision object-detection overlays.
+* **📅 Interactive Weekly Scheduler:** A sleek day-chip selector and time-picker that pushes the custom scheduled tasks directly to the robot.
+* **🔔 Smart Local Notifications:** Triggers local push alerts for critical events (Low Battery < 20%, Loss of RTK Centimeter Fix, Mower Stuck, Returning to Dock, Charging) with toggles inside Settings.
+* **🔄 Asynchronous GitHub Updater:** Independent GitHub API check that detects rolling or stable releases, downloads updates in-app, and executes a secure self-installation.
+
+---
+
+## 💖 Credits & Support
+
+OmniMow is built to empower the open-source and DIY robotics community. We extend our warmest thanks to:
+* **[OpenMower](https://github.com/ClemensElflein/openmower)** – The pioneering firmware behind autonomous DIY lawn mowing.
+* **[ROS 2](https://www.ros.org/)** – The powerhouse robotics middleware.
+* **[VESC](https://vesc-project.com/)** – Outstanding motor controller and telemetry technology.
 
 ---
 
 ## 📖 Quick Links
-* **[Installation & Setup Guide](INSTALL.md)** - Learn how to install OmniMow on Android and iOS (Sideloading).
-* **[Consolidated Codebase](all_code_english_consolidated-v3.md)** - View the entire clean, compiled source code of the project.
-
-
----
-
-## 💖 Standing on the Shoulders of Giants
-
-OmniMow is built to empower the open-source and DIY robotics community. We extend a huge thank you to:
-* **[OpenMow](https://github.com/ClemensElflein/openmow)** – The incredible pioneering DIY lawn mower firmware project.
-* **[ROS 2](https://www.ros.org/)** – The powerhouse framework behind robot logic and communication.
-* **[VESC](https://vesc-project.com/)** – Outstanding open motor controller technology and telemetry.
-* **[Flutter](https://flutter.dev/)** – Google's awesome UI framework.
+* **[Installation & Setup Guide](INSTALL.md)** - Guide to installing OmniMow on Android and iOS devices.
+* **[Comprehensive Design & Overhaul Report](omnimow_full_navimow_overhaul-v10.md)** - View the full Navimow UI-overhaul specifications.
+* **[Consolidated Production Codebase](all_code_english_consolidated-v12.md)** - View the entire clean, compiled source code of the project.
 
 ---
 

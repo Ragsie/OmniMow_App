@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../services/ros_service.dart';
 
+/// Lets the user configure the mower's start time, active days, and duration.
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
@@ -10,9 +12,19 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
-  final List<String> _weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  final Set<String> _selectedDays = {'Mon', 'Wed', 'Fri'}; // Standardvalg
+  final List<String> _weekDays = [
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
+  final Set<String> _selectedDays = {'Mon', 'Wed', 'Fri'}; // Default selection
+  int _mowingDurationHours = 4; // PDF recommendation: 4 hours per day
 
+  /// Opens the platform time picker and stores the selected start time.
   Future<void> _pickTime() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -25,6 +37,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
+  /// Adds or removes a weekday from the schedule selection.
   void _toggleDay(String day) {
     setState(() {
       if (_selectedDays.contains(day)) {
@@ -44,19 +57,31 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Select Start Time", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Select Start Time",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             Center(
               child: ActionChip(
                 avatar: const Icon(Icons.access_time),
-                label: Text(_selectedTime.format(context), style: const TextStyle(fontSize: 24)),
+                label: Text(
+                  _selectedTime.format(context),
+                  style: const TextStyle(fontSize: 24),
+                ),
                 onPressed: _pickTime,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
               ),
             ),
             const SizedBox(height: 30),
 
-            const Text("Select Days of the Week", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Select Days of the Week",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8.0,
@@ -72,19 +97,61 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               }).toList(),
             ),
 
+            const SizedBox(height: 30),
+            const Text(
+              "Select Mowing Duration per Day",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.timer_outlined, color: Colors.greenAccent),
+                const SizedBox(width: 12),
+                Text(
+                  "$_mowingDurationHours hours / day",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: _mowingDurationHours.toDouble(),
+              min: 1.0,
+              max: 12.0,
+              divisions: 11,
+              label: "$_mowingDurationHours hours",
+              activeColor: Theme.of(context).colorScheme.primary,
+              onChanged: (val) {
+                setState(() {
+                  _mowingDurationHours = val.toInt();
+                });
+              },
+            ),
             const Spacer(),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: FilledButton.icon(
                 icon: const Icon(Icons.save),
-                label: const Text("Save Schedule", style: TextStyle(fontSize: 18)),
+                label: const Text(
+                  "Save Schedule",
+                  style: TextStyle(fontSize: 18),
+                ),
                 onPressed: () {
-                  rosService.saveSchedule(_selectedDays.toList(), _selectedTime);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Schedule saved and sent to the robot!")),
+                  rosService.saveSchedule(
+                    _selectedDays.toList(),
+                    _selectedTime,
+                    _mowingDurationHours,
                   );
-                  Navigator.pop(context); // Go back to the dashboard
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Schedule saved and sent to the robot!"),
+                    ),
+                  );
+                  Navigator.pop(context); // Return to the dashboard.
                 },
               ),
             ),

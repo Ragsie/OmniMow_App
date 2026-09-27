@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart'; // Ensures that the Color class is available
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+/// Owns initialization and delivery of local mower alert notifications.
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
 
+  /// Initializes the notification plugin once and requests Android permission.
   Future<void> init() async {
     if (_isInitialized) return;
 
@@ -25,23 +28,33 @@ class NotificationService {
 
     // Request notification permissions on Android 13+
     await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
 
     _isInitialized = true;
   }
 
-  Future<void> showWarning({required int id, required String title, required String body}) async {
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'mower_alerts',
-      'Robot Alerts',
-      channelDescription: 'Alerts about battery, RTK, and hardware',
-      importance: Importance.high,
-      priority: Priority.high,
-      color: const Color(0xFF00FF00),
-    );
+  /// Shows a high-priority notification for a mower warning.
+  Future<void> showWarning({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'mower_alerts',
+          'Robot Alerts',
+          channelDescription: 'Alerts about battery, RTK, and hardware',
+          importance: Importance.high,
+          priority: Priority.high,
+          color: const Color(0xFF00FF00),
+        );
 
-    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    final NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+    );
 
     // Shows the notification with correct named parameters
     await _notificationsPlugin.show(

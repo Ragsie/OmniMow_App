@@ -1,9 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'ros_service.dart'; // Importer to read the active robot IP
 
+import 'ros_service.dart'; // Read the active robot IP from the shared service.
+
+/// Displays the active mower camera stream through a WebRTC connection.
 class LiveFeedScreen extends StatefulWidget {
   const LiveFeedScreen({super.key});
 
@@ -11,6 +14,7 @@ class LiveFeedScreen extends StatefulWidget {
   State<LiveFeedScreen> createState() => _LiveFeedScreenState();
 }
 
+/// Owns the WebRTC renderer, peer connection, and signaling channel lifecycle.
 class _LiveFeedScreenState extends State<LiveFeedScreen> {
   final RTCVideoRenderer _videoRenderer = RTCVideoRenderer();
   bool _isRendererInitialized = false;
@@ -24,6 +28,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
     _initRenderer();
   }
 
+  /// Initializes the video renderer before opening the signaling connection.
   Future<void> _initRenderer() async {
     await _videoRenderer.initialize();
     setState(() {
@@ -34,6 +39,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
     _connectWebRTC();
   }
 
+  /// Negotiates a WebRTC session with the mower's camera service.
   Future<void> _connectWebRTC() async {
     try {
       // Fetches the active robot IP directly from the central ROS Service!
@@ -47,7 +53,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
       final configuration = {
         'iceServers': [
           {'urls': 'stun:stun.l.google.com:19302'},
-        ]
+        ],
       };
 
       _peerConnection = await createPeerConnection(configuration);
@@ -75,7 +81,9 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
           await _peerConnection!.setRemoteDescription(offer);
           final answer = await _peerConnection!.createAnswer();
           await _peerConnection!.setLocalDescription(answer);
-          _signalingChannel!.sink.add(jsonEncode({'type': 'answer', 'sdp': answer.sdp}));
+          _signalingChannel!.sink.add(
+            jsonEncode({'type': 'answer', 'sdp': answer.sdp}),
+          );
         } else if (data['candidate'] != null) {
           final candidate = RTCIceCandidate(
             data['candidate'],
@@ -87,28 +95,29 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
       });
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        _signalingChannel!.sink.add(jsonEncode({
-          'candidate': candidate.candidate,
-          'sdpMid': candidate.sdpMid,
-          'sdpMLineIndex': candidate.sdpMLineIndex,
-        }));
+        _signalingChannel!.sink.add(
+          jsonEncode({
+            'candidate': candidate.candidate,
+            'sdpMid': candidate.sdpMid,
+            'sdpMLineIndex': candidate.sdpMLineIndex,
+          }),
+        );
       };
 
       final offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
-      _signalingChannel!.sink.add(jsonEncode({
-        'type': 'offer',
-        'sdp': offer.sdp,
-      }));
-
+      _signalingChannel!.sink.add(
+        jsonEncode({'type': 'offer', 'sdp': offer.sdp}),
+      );
     } catch (e) {
       debugPrint("WebRTC Error: $e");
     }
   }
 
+  /// Releases all streaming resources when the screen is removed.
   @override
   void dispose() {
-    // Fully close and stop the stream as soon as the user returns to the dashboard.
+    // Close and fully stop the stream as soon as the user returns to the dashboard.
     _signalingChannel?.sink.close();
     _peerConnection?.close();
     _peerConnection?.dispose();
@@ -120,7 +129,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("YOLO Camera Feed")),
-      backgroundColor: Colors.black, // Improve the appearance of the video stream
+      backgroundColor: Colors.black, // Makes the video stream look better
       body: Center(
         child: _isRendererInitialized
             ? RTCVideoView(

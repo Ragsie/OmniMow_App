@@ -1,11 +1,17 @@
+import 'package:http/http.dart' as http;
+
 import 'dart:convert';
 import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+
 import 'notification_service.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Coordinates the mower WebSocket, REST commands, telemetry, and app state.
 class RosService extends ChangeNotifier {
   WebSocketChannel? _channel;
   bool isConnected = false;
@@ -21,6 +27,121 @@ class RosService extends ChangeNotifier {
   String cpuLoad = "Unknown";
   int satellites = 0;
 
+  // --- NEW TELEMETRY INTEGRATIONS (WIFI & RAIN) ---
+  int wifiSignalPct = 0;
+  bool rainDetected = false;
+  bool _hasWarnedRain = false;
+
+  // --- RAIN DELAY CONFIGURATION & STATE ---
+  int rainDelayMinutes = 15;
+  DateTime? rainStoppedAt;
+  bool _hasWarnedRainDelay = false;
+
+  /// Loads persisted rain-delay settings and the last rain-stop timestamp.
+  Future<void> initSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    rainDelayMinutes = prefs.getInt('rain_delay_minutes') ?? 15;
+    final stoppedStr = prefs.getString('rain_stopped_at');
+    if (stoppedStr != null) {
+      rainStoppedAt = DateTime.tryParse(stoppedStr);
+    }
+    notifyListeners();
+  }
+
+  /// Stores the rain-delay duration and forwards it to the connected mower.
+  Future<void> updateRainDelayConfig(int minutes) async {
+    rainDelayMinutes = minutes;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('rain_delay_minutes', minutes);
+    notifyListeners();
+
+    if (currentIp.isEmpty) return;
+    final url = Uri.parse("http://$currentIp:8000/api/schedule/rain_delay");
+    final payload = {"duration_seconds": minutes * 60};
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(payload),
+      );
+      if (response.statusCode == 200) {
+        debugPrint(
+          "Rain delay updated successfully on the robot via REST API: ${response.body}",
+        );
+      } else {
+        debugPrint(
+          "Failed to update rain delay on robot: ${response.statusCode}",
+        );
+      }
+    } catch (e) {
+      debugPrint("Error calling rain_delay API: $e");
+    }
+  }
+
+  /// Cancels the local and remote rain-delay state.
+  Future<void> skipRainDelay() async {
+    _clearRainStoppedTime();
+    _hasWarnedRainDelay = false;
+    notifyListeners();
+
+    if (currentIp.isEmpty) return;
+    final url = Uri.parse("http://$currentIp:8000/api/schedule/skip_delay");
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({}),
+      );
+      if (response.statusCode == 200) {
+        debugPrint(
+          "Skip rain delay sent successfully to robot via REST API: ${response.body}",
+        );
+      } else {
+        debugPrint(
+          "Failed to skip rain delay on robot: ${response.statusCode}",
+        );
+      }
+    } catch (e) {
+      debugPrint("Error calling skip_delay API: $e");
+    }
+  }
+
+  /// Whether the mower is currently waiting for the lawn to dry.
+  bool get isRainDelayActive {
+    if (rainDetected) return false;
+    if (rainStoppedAt == null) return false;
+    if (rainDelayMinutes == 0) return false;
+
+    final elapsed = DateTime.now().difference(rainStoppedAt!).inMinutes;
+    if (elapsed >= rainDelayMinutes) {
+      _clearRainStoppedTime();
+      return false;
+    }
+    return true;
+  }
+
+  /// Returns the number of whole minutes remaining in the rain delay.
+  int get remainingRainDelayMinutes {
+    if (!isRainDelayActive || rainStoppedAt == null) return 0;
+    final elapsed = DateTime.now().difference(rainStoppedAt!).inMinutes;
+    final remaining = rainDelayMinutes - elapsed;
+    return remaining < 0 ? 0 : remaining;
+  }
+
+  void _clearRainStoppedTime() {
+    rainStoppedAt = null;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('rain_stopped_at');
+    });
+  }
+
+  void _saveRainStoppedTime(DateTime time) {
+    rainStoppedAt = time;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('rain_stopped_at', time.toIso8601String());
+    });
+  }
+
   // --- ADDITIONAL TELEMETRY ---
   double batteryVoltage = 0.0;
   double batteryCurrent = 0.0;
@@ -32,17 +153,17 @@ class RosService extends ChangeNotifier {
   double driveMotorsCurrent = 0.0;
   double cpuTemp = 0.0;
 
-  // --- NEW STATISTICS VARIABLES ---
+  // --- OPERATING STATISTICS ---
   double totalDistanceKm = 0.0;
   int totalMowingMinutes = 0;
   int operatingMinutes = 0; // for compatibility with NerdMetricsScreen
   int chargeCycles = 0;
 
-  // --- MAP & POSITIONING ---
+  // --- MAP AND POSITIONING ---
   double currentX = 0.0;
   double currentY = 0.0;
 
-  // History list of all coordinates driven through (Track)
+  // History of every point visited by the robot (the route trace).
   final List<Offset> pathHistory = [];
 
   // For GPS Projection to Local Meters
@@ -56,7 +177,8 @@ class RosService extends ChangeNotifier {
   bool _hasWarnedCharging = false;
   bool _hasWarnedStuck = false;
 
-  // --- POSITION & MAP UPDATE ---
+  // --- POSITION AND MAP UPDATE ---
+  /// Adds a local map coordinate to the route history.
   void updatePosition(double x, double y) {
     currentX = x;
     currentY = y;
@@ -64,7 +186,7 @@ class RosService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // GPS Projection helper to convert Lat/Lon to Local Canvas offsets
+  /// Converts GPS coordinates into local canvas offsets using a local origin.
   void updateGPSPosition(double lat, double lon) {
     if (lat == 0.0 || lon == 0.0) return;
 
@@ -85,7 +207,7 @@ class RosService extends ChangeNotifier {
     updatePosition(mapX, mapY);
   }
 
-  // Clear path history
+  /// Clears the route and resets the GPS projection origin.
   void clearPath() {
     pathHistory.clear();
     _referenceLat = null;
@@ -94,8 +216,9 @@ class RosService extends ChangeNotifier {
   }
 
   // --- CONNECTION ---
+  /// Opens the mower WebSocket and begins processing incoming telemetry.
   void connect(String name, String ip) {
-    currentName = name;  
+    currentName = name;
     currentIp = ip;
     // Updated to Port 8000 and /ws endpoint for the optimized FastAPI backend
     final url = 'ws://$ip:8000/ws';
@@ -107,8 +230,14 @@ class RosService extends ChangeNotifier {
 
       _channel!.stream.listen(
         (data) => _handleIncomingMessage(jsonDecode(data)),
-        onError: (_) { isConnected = false; notifyListeners(); },
-        onDone: () { isConnected = false; notifyListeners(); },
+        onError: (_) {
+          isConnected = false;
+          notifyListeners();
+        },
+        onDone: () {
+          isConnected = false;
+          notifyListeners();
+        },
       );
     } catch (e) {
       isConnected = false;
@@ -116,7 +245,15 @@ class RosService extends ChangeNotifier {
     }
   }
 
-  // Helper to map state code to human readable text
+  // --- DISCONNECT ---
+  /// Closes the mower WebSocket and publishes the disconnected state.
+  void disconnect() {
+    _channel?.sink.close();
+    isConnected = false;
+    notifyListeners();
+  }
+
+  /// Maps the backend's numeric state code to user-facing text.
   String _mapStateCodeToString(int code) {
     switch (code) {
       case 0:
@@ -124,7 +261,7 @@ class RosService extends ChangeNotifier {
       case 1:
         return "MOWING";
       case 2:
-        return "RETURNING TO DOCK";
+        return "DOCKING";
       case 3:
         return "CHARGING";
       case 4:
@@ -134,13 +271,18 @@ class RosService extends ChangeNotifier {
       case 6:
         return "BLADE BLOCKED";
       case 7:
-        return "SEEKING EDGE";
+        return "SEEKING WIRE";
+      case 8:
+        return "RAIN";
+      case 9:
+        return "DRYING";
       default:
-        return "Unknown state ($code)";
+        return "UNKNOWN STATE ($code)";
     }
   }
 
   // --- MESSAGE PARSING ---
+  /// Parses one telemetry payload and updates the relevant observable fields.
   void _handleIncomingMessage(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -163,7 +305,7 @@ class RosService extends ChangeNotifier {
         notificationService.showWarning(
           id: 2,
           title: "GNSS Warning",
-          body: "Lost RTK centimeter fix! Current status: $rtkStatus."
+          body: "Lost RTK Centimeter Fix! Current status: $rtkStatus.",
         );
         _hasWarnedRtk = true;
       } else if (rtkCode == 3) {
@@ -186,7 +328,7 @@ class RosService extends ChangeNotifier {
         notificationService.showWarning(
           id: 1,
           title: "Low Battery!",
-          body: "OmniMow has only ${batteryLevel.toInt()}% battery remaining."
+          body: "OmniMow has only ${batteryLevel.toInt()}% battery remaining.",
         );
         _hasWarnedBattery = true;
       } else if (batteryLevel > 25.0) {
@@ -200,39 +342,39 @@ class RosService extends ChangeNotifier {
       mowerState = _mapStateCodeToString(stateCode);
 
       // Check State-based warnings
-      // State 4 = STUCK
+      // State 4 = STUCK.
       bool allowStuck = prefs.getBool('notif_stuck') ?? true;
       if (stateCode == 4 && !_hasWarnedStuck && allowStuck) {
         notificationService.showWarning(
           id: 5,
           title: "CRITICAL WARNING",
-          body: "The robot is stuck and needs assistance!"
+          body: "The robot is stuck and requires assistance!",
         );
         _hasWarnedStuck = true;
       } else if (stateCode != 4) {
         _hasWarnedStuck = false;
       }
 
-      // State 2 = DOCKING
+      // State 2 = DOCKING.
       bool allowDocking = prefs.getBool('notif_docking') ?? false;
       if (stateCode == 2 && !_hasWarnedDocking && allowDocking) {
         notificationService.showWarning(
           id: 3,
-          title: "OmniMow Alerts",
-          body: "The machine is driving back to the docking station."
+          title: "OmniMow",
+          body: "Returning to docking station.",
         );
         _hasWarnedDocking = true;
       } else if (stateCode != 2) {
         _hasWarnedDocking = false;
       }
 
-      // State 3 = CHARGING
+      // State 3 = CHARGING.
       bool allowCharging = prefs.getBool('notif_charging') ?? false;
       if (stateCode == 3 && !_hasWarnedCharging && allowCharging) {
         notificationService.showWarning(
           id: 4,
           title: "Charging",
-          body: "The machine is now in the charger and receiving power."
+          body: "The robot is now in the charger and receiving power.",
         );
         _hasWarnedCharging = true;
       } else if (stateCode != 3) {
@@ -247,9 +389,12 @@ class RosService extends ChangeNotifier {
 
     if (data.containsKey('power_consumption')) {
       final power = data['power_consumption'] as Map<String, dynamic>;
-      cutterAmps = (power['cutter_motor_current_ampere'] as num? ?? 0.0).toDouble();
-      cutterPowerWatts = (power['cutter_motor_power_watts'] as num? ?? 0.0).toDouble();
-      driveMotorsCurrent = (power['drive_motors_current_ampere'] as num? ?? 0.0).toDouble();
+      cutterAmps = (power['cutter_motor_current_ampere'] as num? ?? 0.0)
+          .toDouble();
+      cutterPowerWatts = (power['cutter_motor_power_watts'] as num? ?? 0.0)
+          .toDouble();
+      driveMotorsCurrent = (power['drive_motors_current_ampere'] as num? ?? 0.0)
+          .toDouble();
     }
 
     // 5. Parse Statistics
@@ -257,110 +402,164 @@ class RosService extends ChangeNotifier {
       final stats = data['statistics'] as Map<String, dynamic>;
       totalDistanceKm = (stats['total_distance_km'] as num? ?? 0.0).toDouble();
 
-      double runtimeHours = (stats['total_runtime_hours'] as num? ?? 0.0).toDouble();
+      double runtimeHours = (stats['total_runtime_hours'] as num? ?? 0.0)
+          .toDouble();
       totalMowingMinutes = (runtimeHours * 60).toInt();
       operatingMinutes = totalMowingMinutes; // For backward compatibility
     }
 
-    // 6. Parse System CPU Diagnostics
+    // 6. Parse System CPU Diagnostics (Now enriched with WiFi and Rain Sensor)
     if (data.containsKey('system')) {
       final sys = data['system'] as Map<String, dynamic>;
       cpuTemp = (sys['cpu_temp_celsius'] as num? ?? 0.0).toDouble();
       double cpuLoadPct = (sys['cpu_load_pct'] as num? ?? 0.0).toDouble();
-      cpuLoad = "${cpuLoadPct.toStringAsFixed(1)}% (${cpuTemp.toStringAsFixed(1)}°C)";
+      cpuLoad =
+          "${cpuLoadPct.toStringAsFixed(1)}% (${cpuTemp.toStringAsFixed(1)}°C)";
+
+      // Parse enriched system telemetry from backend.py
+      // Parse enriched system telemetry (supports both nested PDF and old flat JSON structures)
+      if (sys.containsKey('wifi') && sys['wifi'] is Map) {
+        final wifi = sys['wifi'] as Map<String, dynamic>;
+        wifiSignalPct = (wifi['percentage'] as num? ?? 0).toInt();
+      } else {
+        wifiSignalPct = sys['wifi_signal_pct'] as int? ?? 0;
+      }
+
+      bool wasRaining = rainDetected;
+      rainDetected = sys['rain_detected'] as bool? ?? false;
+
+      // Transition detection
+      if (wasRaining && !rainDetected) {
+        _saveRainStoppedTime(DateTime.now());
+        _hasWarnedRainDelay = false;
+      } else if (rainDetected) {
+        _clearRainStoppedTime();
+      }
+
+      // Smart Rain Detection Warning and local push notification alert
+      bool allowRain = prefs.getBool('notif_rain') ?? true;
+      if (rainDetected && !_hasWarnedRain && allowRain) {
+        notificationService.showWarning(
+          id: 6,
+          title: "Rain Detected!",
+          body: "OmniMow has detected rain. Returning to docking station to protect the lawn.",
+        );
+        _hasWarnedRain = true;
+      } else if (!rainDetected) {
+        _hasWarnedRain = false;
+
+        // Push notification when rain delay starts
+        if (isRainDelayActive && !_hasWarnedRainDelay && allowRain) {
+          notificationService.showWarning(
+            id: 7,
+            title: "Rain Stopped",
+            body:
+                "Rain has stopped. Rain delay active for $rainDelayMinutes minutes to let the lawn dry.",
+          );
+          _hasWarnedRainDelay = true;
+        }
+      }
     }
 
     notifyListeners();
   }
 
   // --- COMMANDS FOR THE ROBOT ---
+  /// Sends a command payload through the active mower WebSocket.
   void sendCommand(String command) {
     if (!isConnected) return;
 
     debugPrint("Command sent to robot: $command");
 
     // Direct FastAPI WebSocket payload
-    final msg = {
-      'command': command
-    };
+    final msg = {'command': command};
     _channel?.sink.add(jsonEncode(msg));
   }
 
-  void saveSchedule(List<String> days, TimeOfDay time) {
-    if (!isConnected) return;
+  /// Converts the selected schedule into the backend's weekly JSON format.
+  Future<void> saveSchedule(
+    List<String> selectedDays,
+    TimeOfDay startTime,
+    int durationHours,
+  ) async {
+    if (currentIp.isEmpty) return;
 
-    final scheduleData = {
-      'days': days,
-      'hour': time.hour,
-      'minute': time.minute,
+    // Map weekday name to the PDF index string (0 = Monday, 6 = Sunday)
+    final Map<String, String> dayMapping = {
+      'Mon': '0',
+      'Man': '0',
+      'Tue': '1',
+      'Tir': '1',
+      'Wed': '2',
+      'Ons': '2',
+      'Thu': '3',
+      'Tor': '3',
+      'Fri': '4',
+      'Fre': '4',
+      'Sat': '5',
+      'Lør': '5',
+      'Sun': '6',
+      'Søn': '6',
     };
 
-    debugPrint("Schedule saved and sent: $scheduleData");
+    // Format start time as HH:MM
+    final String startStr =
+        "${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}";
 
-    final msg = {
-      'schedule': scheduleData
-    };
-    _channel?.sink.add(jsonEncode(msg));
+    // Calculate end time on the same day
+    int endHour = startTime.hour + durationHours;
+    int endMinute = startTime.minute;
+    if (endHour >= 24) {
+      endHour = 23;
+      endMinute = 59;
+    }
+    final String endStr =
+        "${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}";
+
+    // Build the "days" map according to the PDF
+    final Map<String, List<Map<String, String>>> daysJson = {};
+    for (int i = 0; i < 7; i++) {
+      daysJson[i.toString()] = [];
+    }
+
+    for (var day in selectedDays) {
+      final String? key = dayMapping[day];
+      if (key != null) {
+        daysJson[key] = [
+          {"start": startStr, "end": endStr},
+        ];
+      }
+    }
+
+    final payload = {"enabled": true, "days": daysJson};
+
+    final url = Uri.parse("http://$currentIp:8000/api/schedule");
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(payload),
+      );
+      if (response.statusCode == 200) {
+        debugPrint(
+          "Schedule updated successfully on the robot via REST API: ${response.body}",
+        );
+      } else {
+        debugPrint(
+          "Failed to update schedule via REST API: ${response.statusCode}",
+        );
+      }
+    } catch (e) {
+      debugPrint("Error sending schedule to robot REST API: $e");
+    }
   }
-
-  // --- SIMULATOR ---
-  //Timer? _simTimer;
-  //double _simHeading = 0.0;
-
-  //void startSimulation() {
-    //isConnected = true;
-    //rtkStatus = "RTK Centimeter-Fix (Perfect)";
-    //satellites = 24;
-    //cpuLoad = "42.0% (45.0°C)";
-    //bladeActive = true;
-    //cutterAmps = 4.2;
-    //cutterRpm = 2850;
-    //cutterPowerWatts = 43.6;
-    //totalDistanceKm = 12.5;
-    //totalMowingMinutes = 145;
-    //operatingMinutes = 145;
-    //chargeCycles = 12;
-    //cpuTemp = 45.0;
-    //batteryVoltage = 24.2;
-    //batteryCurrent = -3.2;
-    //batteryTemp = 28.5;
-
-    //if (currentX == 0 && currentY == 0) {
-      //currentX = 150.0;
-      //currentY = 150.0;
-    //}
-
-    //_simTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      //_simHeading += 0.05;
-      //double speed = 2.0;
-
-      //double newX = currentX + (speed * math.cos(_simHeading));
-      //double newY = currentY + (speed * math.sin(_simHeading));
-
-      //updatePosition(newX, newY);
-
-      //batteryLevel = math.max(0.0, batteryLevel - 0.01);
-      //progress = math.min(100.0, progress + 0.05);
-
-      // Dynamic simulation of battery telemetry for the metrics screen
-      //batteryVoltage = 18.0 + (batteryLevel / 100.0) * 7.2; // Ranges from 18.0V (empty) to 25.2V (full)
-      //batteryCurrent = -2.0 - (math.sin(_simHeading * 2.0) * 1.5); // Fluctuates between -0.5A and -3.5A during operation
-      //batteryTemp = 25.0 + (100.0 - batteryLevel) * 0.1 + (math.cos(_simHeading) * 0.2); // Rises slightly as the battery discharges
-
-      // Also simulate blade load
-      //cutterAmps = 3.5 + (math.sin(_simHeading * 5.0) * 1.2);
-      //if (cutterAmps < 0) cutterAmps = 0.0;
-      //cutterPowerWatts = cutterAmps * batteryVoltage;
-    //});
-  //}
 
   @override
   void dispose() {
-    //_simTimer?.cancel();
     _channel?.sink.close();
     super.dispose();
   }
 }
 
-// Global instans til hele appen
+// Global service instance shared by the entire app.
 final rosService = RosService();
