@@ -73,12 +73,3 @@ OmniMow is built to empower the open-source and DIY robotics community. We exten
 
 If OmniMow made your lawn mower smarter or your DIY journey more enjoyable, please consider buying me a coffee to keep development alive and rolling!
 
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-yellow?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/ragsie)
-
-| Coin | QR | Address |
-| :-- | :--- | :---: |
-| **Bitcoin Cash** | <img width="160" height="161" alt="qrcode" src="https://github.com/user-attachments/assets/254aece9-8957-4d34-812c-885ac2e839fa" /> | `bitcoincash:qzp4c7klef8q6gxycvc84dx0fnhnfxkkpy6xda56h3` |
-| **Bitcoin** | <img width="160" height="162" alt="image" src="https://github.com/user-attachments/assets/e5b1cd3d-fd26-46fc-88db-2aa931b4f5d4" /> | `3QrAPVGC3aypf3LG5DYYRnjwjKuFMzkeJE` |
-
----
-
