@@ -15,7 +15,7 @@ This latest version features a **comprehensive premium UI Overhaul** inspired di
 
 ## ✨ Premium Highlights
 
-### 🎨 Segway Navimow UI Overhaul
+### 🎨 light glass-like UI Overhaul
 * **Glassmorphic HUD Design:** Widgets, controls, and telemetry pills float gracefully on premium frosted glass cards (`GlassCard`) utilizing dynamic, real-time background blurring (`BackdropFilter`).
 * **Material 3 Light & Dark Themes:** Fully optimized themes that adapt seamlessly:
   * *Light Mode:* Premium off-white backdrop (`0xFFF5F6FA`) with deep slate typography, translucent white glass cards, and vivid emerald-green accents.
