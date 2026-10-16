@@ -1,4 +1,4 @@
-name: OmniMow CI/CD Rolling Release Pipeline
+name: OmniMow Android & iOS Build
 
 on:
   push:
