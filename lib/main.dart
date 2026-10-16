@@ -37,6 +37,20 @@ void main() async {
   final List<String> mowerStrings = prefs.getStringList('mower_list') ?? [];
   final bool hasMowers = mowerStrings.isNotEmpty;
 
+  // Reconnect to the last used mower (or the first saved one) on startup.
+  if (hasMowers) {
+    final lastIp = prefs.getString('robot_ip');
+    final saved = [
+      for (final str in mowerStrings)
+        if (str.split('|').length == 2) str.split('|'),
+    ];
+    final mower = saved.firstWhere(
+      (m) => m[1] == lastIp,
+      orElse: () => saved.isNotEmpty ? saved.first : const [],
+    );
+    if (mower.length == 2) rosService.connect(mower[0], mower[1]);
+  }
+
   runApp(
     MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => rosService)],
@@ -214,7 +228,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: CustomPaint(
                     painter: MowerMapPainter(
                       path: ros.pathHistory,
-                      currentRobotPos: Offset(ros.currentX, ros.currentY),
+                      zones: ros.zones,
+                      robotPos: Offset(ros.currentX, ros.currentY),
+                      robotYaw: ros.currentYaw,
+                      hasPose: ros.hasPose,
                       isDark: isDark,
                     ),
                   ),
@@ -267,41 +284,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // RTK GPS Status Pill
+                // Stereo Camera Calibration Pill (tap for details / recalibrate)
                 Expanded(
-                  child: GlassCard(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    borderRadius: 30,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color:
-                                ros.rtkStatus.contains("FIX") ||
-                                    ros.rtkStatus.contains("Excellent")
-                                ? Colors.greenAccent
-                                : Colors.orangeAccent,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            ros.rtkStatus,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                  child: GestureDetector(
+                    onTap: () => _showCalibrationDialog(context, ros),
+                    child: GlassCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      borderRadius: 30,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: ros.isCalibrated
+                                  ? Colors.greenAccent
+                                  : (ros.calibrationState == "failed"
+                                        ? Colors.redAccent
+                                        : Colors.orangeAccent),
+                              shape: BoxShape.circle,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              ros.calibrationLabel,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -346,6 +366,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       },
                       icon: const Icon(Icons.calendar_month, size: 18),
                       label: const Text('Schedule'),
+                    ),
+                    // Automatic lawn mapping (edge following)
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark
+                            ? Colors.black.withValues(alpha: 0.5)
+                            : Colors.white.withValues(alpha: 0.9),
+                        foregroundColor: theme.colorScheme.onSurface,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          side: BorderSide(
+                            color: isDark ? Colors.white12 : Colors.black12,
+                          ),
+                        ),
+                      ),
+                      onPressed: () => _confirmAutoMap(context, ros),
+                      icon: const Icon(Icons.fence, size: 18),
+                      label: const Text('Map lawn'),
                     ),
                     // Nerd Metrics Button
                     ElevatedButton.icon(
@@ -511,25 +550,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             context: context,
                             icon: Icons.home_outlined,
                             label: 'Home',
-                            onPressed: () {
-                              ros.sendCommand("home");
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Command sent: Return to Docking Station',
-                                  ),
-                                ),
-                              );
+                            onPressed: () async {
+                              final message = await ros.returnHome();
+                              if (context.mounted) {
+                                _showMessage(context, message);
+                              }
                             },
                           ),
 
                           // Large Glowing Start / Pause Button
                           GestureDetector(
-                            onTap: () {
-                              if (ros.mowerState == "MOWING") {
-                                ros.sendCommand("stop");
-                              } else {
-                                ros.sendCommand("start");
+                            onTap: () async {
+                              final message = ros.missionActive
+                                  ? await ros.stopMowing()
+                                  : await ros.startMowing();
+                              if (context.mounted) {
+                                _showMessage(context, message);
                               }
                             },
                             child: Container(
@@ -549,7 +585,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                               child: Icon(
-                                ros.mowerState == "MOWING"
+                                ros.missionActive
                                     ? Icons.pause_rounded
                                     : Icons.play_arrow_rounded,
                                 color: Colors.white,
@@ -639,15 +675,114 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Color _getStateColor(String state) {
     switch (state) {
       case "MOWING":
+      case "MAPPING":
         return Colors.greenAccent;
       case "DOCKING":
+      case "RETURNING":
+      case "UNDOCKING":
+      case "PLANNING":
         return Colors.blueAccent;
       case "CHARGING":
+      case "PAUSED":
         return Colors.amberAccent;
       case "STOP":
+      case "STOPPED":
+      case "ERROR":
+      case "EMERGENCY STOP":
         return Colors.redAccent;
       default:
         return Colors.grey;
     }
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Explains and starts automatic lawn mapping (the mower follows the lawn edge).
+  Future<void> _confirmAutoMap(BuildContext context, RosService ros) async {
+    final start = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Map the lawn'),
+        content: const Text(
+          'The mower leaves the dock, finds the edge of the lawn and drives around it '
+          'with the edge on its right side. When it is back where it started, the loop is '
+          'saved as a mowing zone and the mower returns to the dock.\n\n'
+          'The blade stays off. Stay close the first time.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Start mapping'),
+          ),
+        ],
+      ),
+    );
+    if (start != true) return;
+    final message = await ros.startAutoMap();
+    if (context.mounted) {
+      _showMessage(context, message);
+    }
+  }
+
+  /// Shows the stereo camera calibration status and lets the user recalibrate.
+  void _showCalibrationDialog(BuildContext context, RosService ros) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Camera calibration'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              ros.calibrationLabel,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (ros.calibrationMessage.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(ros.calibrationMessage),
+            ],
+            if (ros.isCalibrated && ros.calibrationRms != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Error ${ros.calibrationRms!.toStringAsFixed(2)} px · '
+                'baseline ${ros.calibrationBaselineMm?.toStringAsFixed(1) ?? "-"} mm · '
+                'focal ${ros.calibrationFocalPx?.toStringAsFixed(0) ?? "-"} px',
+              ),
+            ],
+            const SizedBox(height: 12),
+            const Text(
+              'To calibrate, hold a checkerboard (10 x 7 squares of 25 mm) 0.5 - 2 m in front of '
+              'the mower so both cameras see it, and move it slowly to different positions and angles.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+          if (ros.isCalibrated)
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                final message = await ros.restartCalibration();
+                if (context.mounted) {
+                  _showMessage(context, message);
+                }
+              },
+              child: const Text('Recalibrate'),
+            ),
+        ],
+      ),
+    );
   }
 }

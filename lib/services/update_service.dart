@@ -14,7 +14,7 @@ class UpdateService {
   // IMPORTANT: Ensure this matches your GitHub username and repository name!
   // =========================================================================
   static const String repoOwner = "Ragsie";
-  static const String repoName = "OmniMow_App"; // Your GitHub repository name
+  static const String repoName = "app_test"; // Your GitHub repository name
 
   /// Compares the installed build with the newest GitHub release.
   static Future<void> checkForUpdates(

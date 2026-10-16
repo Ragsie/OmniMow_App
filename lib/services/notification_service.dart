@@ -46,7 +46,7 @@ class NotificationService {
         AndroidNotificationDetails(
           'mower_alerts',
           'Robot Alerts',
-          channelDescription: 'Alerts about battery, RTK, and hardware',
+          channelDescription: 'Alerts about battery, camera calibration, and hardware',
           importance: Importance.high,
           priority: Priority.high,
           color: const Color(0xFF00FF00),

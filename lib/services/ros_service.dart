@@ -2,7 +2,6 @@ import 'package:http/http.dart' as http;
 
 import 'dart:convert';
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -11,10 +10,17 @@ import 'notification_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Port of the OmniMow app backend (FastAPI). rosbridge uses 8000 on the robot.
+const int backendPort = 9000;
+
 /// Coordinates the mower WebSocket, REST commands, telemetry, and app state.
 class RosService extends ChangeNotifier {
   WebSocketChannel? _channel;
+  Timer? _pollTimer;
   bool isConnected = false;
+
+  /// Why the last connection attempt failed or dropped (null when fine).
+  String? connectionError;
 
   String currentIp = "";
   String currentName = "OmniMow Dashboard";
@@ -23,9 +29,47 @@ class RosService extends ChangeNotifier {
   String mowerState = "STOP";
   double batteryLevel = 100.0;
   double progress = 0.0;
-  String rtkStatus = "Waiting for Fix...";
   String cpuLoad = "Unknown";
-  int satellites = 0;
+
+  // --- MOWING MISSION (mowing_control) ---
+  bool missionActive = false;
+  String missionState = "UNKNOWN";
+  String missionMessage = "";
+  bool hazardInView = false;
+  String _lastMissionState = "";
+
+  // --- STEREO CALIBRATION (first boot) ---
+  String calibrationState = "unknown";
+  int calibrationSamples = 0;
+  int calibrationNeeded = 30;
+  String calibrationMessage = "";
+  double? calibrationRms;
+  double? calibrationBaselineMm;
+  double? calibrationFocalPx;
+  bool _hasWarnedCalibration = false;
+
+  bool get isCalibrated => calibrationState == "done";
+
+  /// Short text for the status pill on the dashboard.
+  String get calibrationLabel {
+    switch (calibrationState) {
+      case "done":
+        return "Camera calibrated";
+      case "waiting_for_board":
+        return "Calibration: show board";
+      case "capturing":
+      case "retrying":
+        return "Calibration $calibrationSamples/$calibrationNeeded";
+      case "calibrating":
+        return "Calibrating...";
+      case "recalibration_requested":
+        return "Recalibrating...";
+      case "failed":
+        return "Calibration failed";
+      default:
+        return "Calibration unknown";
+    }
+  }
 
   // --- NEW TELEMETRY INTEGRATIONS (WIFI & RAIN) ---
   int wifiSignalPct = 0;
@@ -49,6 +93,66 @@ class RosService extends ChangeNotifier {
   }
 
   /// Stores the rain-delay duration and forwards it to the connected mower.
+  Uri _api(String path) => Uri.parse("http://$currentIp:$backendPort$path");
+
+  /// POSTs to the backend and returns its message (or the error) for a snackbar.
+  Future<String> _post(String path, [Map<String, dynamic>? body]) async {
+    if (currentIp.isEmpty) return "Not connected to a mower";
+    try {
+      final response = await http
+          .post(
+            _api(path),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode(body ?? {}),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) {
+        return "Mower answered ${response.statusCode}";
+      }
+      final data = jsonDecode(response.body);
+      if (data is Map && data['message'] != null) {
+        return data['message'].toString();
+      }
+      return "OK";
+    } catch (e) {
+      return "Could not reach the mower: $e";
+    }
+  }
+
+  // --- MOWING COMMANDS (REST, so the app gets the mower's answer) ---
+  Future<String> startMowing() => _post("/api/mowing/start");
+  Future<String> stopMowing() => _post("/api/mowing/stop");
+  Future<String> returnHome() => _post("/api/mowing/return_home");
+
+  /// The mower drives along the lawn edge by itself and saves the loop as a zone.
+  Future<String> startAutoMap() => _post("/api/zones/auto_map");
+
+  /// Starts a new stereo calibration (hold the checkerboard in front of the cameras).
+  Future<String> restartCalibration() => _post("/api/calibration/restart");
+
+  /// Loads the lawn zones (map frame, metres) for the map.
+  Future<void> loadZones() async {
+    if (currentIp.isEmpty) return;
+    try {
+      final response = await http
+          .get(_api("/api/zones"))
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      zones = [
+        for (final zone in (data['zones'] as List? ?? []))
+          if (zone is Map && zone['enabled'] != false)
+            [
+              for (final p in (zone['boundary'] as List? ?? []))
+                Offset((p[0] as num).toDouble(), (p[1] as num).toDouble()),
+            ],
+      ];
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error loading zones: $e");
+    }
+  }
+
   Future<void> updateRainDelayConfig(int minutes) async {
     rainDelayMinutes = minutes;
     final prefs = await SharedPreferences.getInstance();
@@ -56,7 +160,7 @@ class RosService extends ChangeNotifier {
     notifyListeners();
 
     if (currentIp.isEmpty) return;
-    final url = Uri.parse("http://$currentIp:8000/api/schedule/rain_delay");
+    final url = _api("/api/schedule/rain_delay");
     final payload = {"duration_seconds": minutes * 60};
     try {
       final response = await http.post(
@@ -85,7 +189,7 @@ class RosService extends ChangeNotifier {
     notifyListeners();
 
     if (currentIp.isEmpty) return;
-    final url = Uri.parse("http://$currentIp:8000/api/schedule/skip_delay");
+    final url = _api("/api/schedule/skip_delay");
     try {
       final response = await http.post(
         url,
@@ -152,6 +256,9 @@ class RosService extends ChangeNotifier {
   double cutterPowerWatts = 0.0;
   double driveMotorsCurrent = 0.0;
   double cpuTemp = 0.0;
+  int ramUsedMb = 0;
+  int ramTotalMb = 0;
+  double ramUsedPct = 0.0;
 
   // --- OPERATING STATISTICS ---
   double totalDistanceKm = 0.0;
@@ -160,97 +267,158 @@ class RosService extends ChangeNotifier {
   int chargeCycles = 0;
 
   // --- MAP AND POSITIONING ---
+  // Position on the mower's SLAM map in metres (x east/forward from the dock, y left),
+  // the map origin is the charging station.
   double currentX = 0.0;
   double currentY = 0.0;
+  double currentYaw = 0.0;
+  bool hasPose = false;
 
-  // History of every point visited by the robot (the route trace).
+  // History of every point visited by the robot (the route trace), in metres.
   final List<Offset> pathHistory = [];
 
-  // For GPS Projection to Local Meters
-  double? _referenceLat;
-  double? _referenceLon;
+  // Lawn zones recorded by the mower (metres, map frame).
+  List<List<Offset>> zones = [];
 
   // Variables to avoid spam
   bool _hasWarnedBattery = false;
-  bool _hasWarnedRtk = false;
   bool _hasWarnedDocking = false;
   bool _hasWarnedCharging = false;
   bool _hasWarnedStuck = false;
 
   // --- POSITION AND MAP UPDATE ---
-  /// Adds a local map coordinate to the route history.
-  void updatePosition(double x, double y) {
+  /// Adds a map position (metres) to the route history.
+  void updatePosition(double x, double y, double yaw) {
     currentX = x;
     currentY = y;
-    pathHistory.add(Offset(x, y));
-    notifyListeners();
-  }
-
-  /// Converts GPS coordinates into local canvas offsets using a local origin.
-  void updateGPSPosition(double lat, double lon) {
-    if (lat == 0.0 || lon == 0.0) return;
-
-    if (_referenceLat == null || _referenceLon == null) {
-      _referenceLat = lat;
-      _referenceLon = lon;
+    currentYaw = yaw;
+    hasPose = true;
+    if (pathHistory.isEmpty ||
+        (pathHistory.last - Offset(x, y)).distance >= 0.1) {
+      pathHistory.add(Offset(x, y));
+      if (pathHistory.length > 20000) pathHistory.removeAt(0);
     }
-
-    // Simple equirectangular projection to local meters
-    double latRad = lat * math.pi / 180.0;
-    double dy = (lat - _referenceLat!) * 111111.0;
-    double dx = (lon - _referenceLon!) * 111111.0 * math.cos(latRad);
-
-    // Map to canvas coordinates centered around 150, 150
-    double mapX = 150.0 + dx;
-    double mapY = 150.0 - dy; // Invert Y because canvas Y goes down
-
-    updatePosition(mapX, mapY);
   }
 
-  /// Clears the route and resets the GPS projection origin.
+  /// Clears the route trace.
   void clearPath() {
     pathHistory.clear();
-    _referenceLat = null;
-    _referenceLon = null;
     notifyListeners();
   }
 
   // --- CONNECTION ---
   /// Opens the mower WebSocket and begins processing incoming telemetry.
-  void connect(String name, String ip) {
+  Future<void> connect(String name, String ip) async {
+    // Close a previous connection first, so its onDone cannot reset the new one.
+    _stopPolling();
+    _channel?.sink.close();
+    _channel = null;
+    isConnected = false;
+
     currentName = name;
     currentIp = ip;
-    // Updated to Port 8000 and /ws endpoint for the optimized FastAPI backend
-    final url = 'ws://$ip:8000/ws';
+    connectionError = null;
+    notifyListeners();
+    final url = 'ws://$ip:$backendPort/ws';
 
+    final channel = WebSocketChannel.connect(Uri.parse(url));
+    _channel = channel;
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(url));
-      isConnected = true;
-      notifyListeners();
-
-      _channel!.stream.listen(
-        (data) => _handleIncomingMessage(jsonDecode(data)),
-        onError: (_) {
-          isConnected = false;
-          notifyListeners();
-        },
-        onDone: () {
-          isConnected = false;
-          notifyListeners();
-        },
-      );
+      // The handshake fails here (not in connect) if the mower is unreachable.
+      await channel.ready.timeout(const Duration(seconds: 10));
     } catch (e) {
-      isConnected = false;
-      notifyListeners();
+      debugPrint("WebSocket connection to $url failed: $e");
+      if (_channel == channel) {
+        _channel = null;
+        connectionError = e.toString();
+        notifyListeners();
+      }
+      return;
+    }
+    if (_channel != channel) return; // a newer connect() took over
+
+    isConnected = true;
+    notifyListeners();
+    loadZones();
+    _startPolling();
+
+    channel.stream.listen(
+      (data) {
+        try {
+          final decoded = jsonDecode(data);
+          if (decoded is Map<String, dynamic>) {
+            _handleIncomingMessage(decoded).catchError((Object e) {
+              debugPrint("Could not parse telemetry from mower: $e");
+              notifyListeners();
+            });
+          }
+        } catch (e) {
+          debugPrint("Ignoring invalid message from mower: $e");
+        }
+      },
+      onError: (e) {
+        if (_channel != channel) return;
+        _stopPolling();
+        connectionError = e.toString();
+        isConnected = false;
+        notifyListeners();
+      },
+      onDone: () {
+        if (_channel != channel) return;
+        _stopPolling();
+        isConnected = false;
+        notifyListeners();
+      },
+    );
+  }
+
+  /// The backend does not push all telemetry over the WebSocket, so poll the REST
+  /// endpoints that have it.
+  void _startPolling() {
+    _stopPolling();
+    _pollCalibration();
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _pollCalibration(),
+    );
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  Future<void> _pollCalibration() async {
+    if (currentIp.isEmpty) return;
+    try {
+      final response = await http
+          .get(_api("/api/calibration"))
+          .timeout(const Duration(seconds: 4));
+      if (response.statusCode != 200) return;
+      final cal = jsonDecode(response.body);
+      if (cal is Map<String, dynamic>) {
+        await _handleIncomingMessage({'calibration': cal});
+      }
+    } catch (e) {
+      debugPrint("Error loading calibration: $e");
     }
   }
 
   // --- DISCONNECT ---
   /// Closes the mower WebSocket and publishes the disconnected state.
   void disconnect() {
+    _stopPolling();
     _channel?.sink.close();
+    _channel = null;
     isConnected = false;
     notifyListeners();
+  }
+
+  /// Reads an int the backend may send as int, double or numeric string.
+  static int _toInt(dynamic value) {
+    if (value is num) return value.toInt();
+    if (value is String) return num.tryParse(value)?.toInt() ?? 0;
+    return 0;
   }
 
   /// Maps the backend's numeric state code to user-facing text.
@@ -283,44 +451,80 @@ class RosService extends ChangeNotifier {
 
   // --- MESSAGE PARSING ---
   /// Parses one telemetry payload and updates the relevant observable fields.
-  void _handleIncomingMessage(Map<String, dynamic> data) async {
+  Future<void> _handleIncomingMessage(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. Parse GPS Diagnostics
-    if (data.containsKey('gps')) {
-      final gps = data['gps'] as Map<String, dynamic>;
-      double lat = (gps['lat'] as num? ?? 0.0).toDouble();
-      double lon = (gps['lon'] as num? ?? 0.0).toDouble();
+    // Answer to a command sent over the websocket
+    if (data.containsKey('command_result')) {
+      final result = data['command_result'] as Map<String, dynamic>;
+      debugPrint("Command ${result['command']}: ${result['message']}");
+      return;
+    }
 
-      // Update coordinates dynamically on the map
-      updateGPSPosition(lat, lon);
+    // 1. Stereo calibration (replaces GPS: the mower localizes with its cameras)
+    if (data['calibration'] is Map) {
+      final cal = data['calibration'] as Map<String, dynamic>;
+      calibrationState = cal['state'] as String? ?? 'unknown';
+      calibrationSamples = (cal['samples'] as num? ?? 0).toInt();
+      calibrationNeeded = (cal['needed'] as num? ?? 30).toInt();
+      calibrationMessage = cal['message'] as String? ?? '';
+      final result = cal['result'];
+      if (result is Map) {
+        calibrationRms = (result['rms_stereo'] as num?)?.toDouble();
+        final baseline = (result['baseline'] as num?)?.toDouble();
+        calibrationBaselineMm = baseline == null ? null : baseline * 1000.0;
+        calibrationFocalPx = (result['focal_px'] as num?)?.toDouble();
+      }
 
-      rtkStatus = gps['rtk_text'] ?? gps['status'] ?? 'No Fix';
-      satellites = gps['satellites'] as int? ?? 0;
-
-      // Check RTK Warning settings
-      bool allowRtk = prefs.getBool('notif_rtk') ?? true;
-      int rtkCode = gps['rtk_code'] as int? ?? 0;
-      if (rtkCode != 3 && !_hasWarnedRtk && allowRtk) {
+      bool allowCalibration = prefs.getBool('notif_calibration') ?? true;
+      if (!isCalibrated &&
+          calibrationState != 'unknown' &&
+          !_hasWarnedCalibration &&
+          allowCalibration) {
         notificationService.showWarning(
           id: 2,
-          title: "GNSS Warning",
-          body: "Lost RTK Centimeter Fix! Current status: $rtkStatus.",
+          title: "Camera calibration needed",
+          body: calibrationState == 'failed'
+              ? "Stereo calibration failed: $calibrationMessage"
+              : "Hold the checkerboard in front of the mower's cameras to calibrate them.",
         );
-        _hasWarnedRtk = true;
-      } else if (rtkCode == 3) {
-        _hasWarnedRtk = false;
+        _hasWarnedCalibration = true;
+      } else if (isCalibrated) {
+        _hasWarnedCalibration = false;
       }
     }
 
+    // 1b. Mowing mission: state, progress and position on the SLAM map
+    if (data['mission'] is Map) {
+      final mission = data['mission'] as Map<String, dynamic>;
+      missionActive = mission['active'] as bool? ?? false;
+      missionState = mission['state'] as String? ?? 'UNKNOWN';
+      missionMessage = mission['message'] as String? ?? '';
+      progress = (mission['progress_pct'] as num? ?? 0.0).toDouble();
+      hazardInView = mission['hazard'] as bool? ?? false;
+      final pose = mission['pose'];
+      if (pose is List && pose.length >= 3) {
+        updatePosition(
+          (pose[0] as num).toDouble(),
+          (pose[1] as num).toDouble(),
+          (pose[2] as num).toDouble(),
+        );
+      }
+      // A finished edge mapping run saved a new zone: reload the zones for the map
+      if (missionState != _lastMissionState && missionState == 'DONE') {
+        loadZones();
+      }
+      _lastMissionState = missionState;
+    }
+
     // 2. Parse Battery Health
-    if (data.containsKey('battery')) {
+    if (data['battery'] is Map) {
       final battery = data['battery'] as Map<String, dynamic>;
       batteryLevel = (battery['percentage'] as num? ?? 100.0).toDouble();
       batteryVoltage = (battery['voltage'] as num? ?? 0.0).toDouble();
       batteryCurrent = (battery['current'] as num? ?? 0.0).toDouble();
       batteryTemp = (battery['temperature_celsius'] as num? ?? 0.0).toDouble();
-      chargeCycles = battery['charge_cycles'] as int? ?? 0;
+      chargeCycles = _toInt(battery['charge_cycles']);
 
       // Check Low Battery settings
       bool allowBattery = prefs.getBool('notif_battery') ?? true;
@@ -336,10 +540,12 @@ class RosService extends ChangeNotifier {
       }
     }
 
-    // 3. Parse System State
-    if (data.containsKey('state')) {
-      int stateCode = data['state'] as int? ?? 0;
-      mowerState = _mapStateCodeToString(stateCode);
+    // 3. Parse System State (the mission state is shown while a mission runs)
+    if (data['state'] != null) {
+      int stateCode = _toInt(data['state']);
+      mowerState = missionActive && stateCode != 4 && stateCode != 5
+          ? missionState
+          : _mapStateCodeToString(stateCode);
 
       // Check State-based warnings
       // State 4 = STUCK.
@@ -382,12 +588,20 @@ class RosService extends ChangeNotifier {
       }
     }
 
-    // 4. Parse Cutter Motor & Power Consumption
-    int cutterStatus = data['cutter_status'] as int? ?? 0;
-    bladeActive = (cutterStatus == 1);
-    cutterRpm = data['cutter_rpm'] as int? ?? 0;
+    // 4. Parse Cutter Motor & Power Consumption (only when the payload has them,
+    // so a calibration-only update does not reset the blade state)
+    if (data.containsKey('cutter_status') || data['mission'] is Map) {
+      int cutterStatus = _toInt(data['cutter_status']);
+      bladeActive =
+          (cutterStatus == 1) ||
+          (data['mission'] is Map &&
+              (data['mission']['blade_on'] as bool? ?? false));
+    }
+    if (data.containsKey('cutter_rpm')) {
+      cutterRpm = _toInt(data['cutter_rpm']);
+    }
 
-    if (data.containsKey('power_consumption')) {
+    if (data['power_consumption'] is Map) {
       final power = data['power_consumption'] as Map<String, dynamic>;
       cutterAmps = (power['cutter_motor_current_ampere'] as num? ?? 0.0)
           .toDouble();
@@ -398,7 +612,7 @@ class RosService extends ChangeNotifier {
     }
 
     // 5. Parse Statistics
-    if (data.containsKey('statistics')) {
+    if (data['statistics'] is Map) {
       final stats = data['statistics'] as Map<String, dynamic>;
       totalDistanceKm = (stats['total_distance_km'] as num? ?? 0.0).toDouble();
 
@@ -409,12 +623,19 @@ class RosService extends ChangeNotifier {
     }
 
     // 6. Parse System CPU Diagnostics (Now enriched with WiFi and Rain Sensor)
-    if (data.containsKey('system')) {
+    if (data['system'] is Map) {
       final sys = data['system'] as Map<String, dynamic>;
       cpuTemp = (sys['cpu_temp_celsius'] as num? ?? 0.0).toDouble();
       double cpuLoadPct = (sys['cpu_load_pct'] as num? ?? 0.0).toDouble();
       cpuLoad =
           "${cpuLoadPct.toStringAsFixed(1)}% (${cpuTemp.toStringAsFixed(1)}°C)";
+
+      if (sys['memory'] is Map) {
+        final mem = sys['memory'] as Map<String, dynamic>;
+        ramUsedMb = _toInt(mem['used_mb']);
+        ramTotalMb = _toInt(mem['total_mb']);
+        ramUsedPct = (mem['used_pct'] as num? ?? 0.0).toDouble();
+      }
 
       // Parse enriched system telemetry from backend.py
       // Parse enriched system telemetry (supports both nested PDF and old flat JSON structures)
@@ -422,7 +643,7 @@ class RosService extends ChangeNotifier {
         final wifi = sys['wifi'] as Map<String, dynamic>;
         wifiSignalPct = (wifi['percentage'] as num? ?? 0).toInt();
       } else {
-        wifiSignalPct = sys['wifi_signal_pct'] as int? ?? 0;
+        wifiSignalPct = _toInt(sys['wifi_signal_pct']);
       }
 
       bool wasRaining = rainDetected;
@@ -465,7 +686,8 @@ class RosService extends ChangeNotifier {
   }
 
   // --- COMMANDS FOR THE ROBOT ---
-  /// Sends a command payload through the active mower WebSocket.
+  /// Sends a command payload through the active mower WebSocket
+  /// ("start", "stop", "home", "auto_map"). Prefer the REST methods above, which return the answer.
   void sendCommand(String command) {
     if (!isConnected) return;
 
@@ -533,7 +755,7 @@ class RosService extends ChangeNotifier {
 
     final payload = {"enabled": true, "days": daysJson};
 
-    final url = Uri.parse("http://$currentIp:8000/api/schedule");
+    final url = _api("/api/schedule");
     try {
       final response = await http.post(
         url,
@@ -556,6 +778,7 @@ class RosService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _stopPolling();
     _channel?.sink.close();
     super.dispose();
   }

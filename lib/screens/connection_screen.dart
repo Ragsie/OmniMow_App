@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -165,7 +166,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               }
             }
 
-            final isAlive = await _checkIpPort(ip, 8000);
+            final isAlive = await _checkIpPort(ip, backendPort);
             checkedCount++;
 
             if (isAlive && !found) {
@@ -187,11 +188,16 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         _handleNoRobotFound();
       }
     } catch (_) {
-      _handleNoRobotFound();
+      // The 5-second timeout can fire after a mower was already found.
+      if (_discoveredIp != null) {
+        _handleRobotDiscovered(_discoveredIp!);
+      } else {
+        _handleNoRobotFound();
+      }
     }
   }
 
-  /// Checks whether the mower's backend port accepts a TCP connection.
+  /// Checks whether the host runs the OmniMow backend, not just any service on the port.
   Future<bool> _checkIpPort(String ip, int port) async {
     try {
       final socket = await Socket.connect(
@@ -200,7 +206,16 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         timeout: const Duration(milliseconds: 400),
       );
       await socket.close();
-      return true;
+    } catch (_) {
+      return false;
+    }
+    try {
+      // FastAPI publishes its title ("OmniMow API Gateway") in the OpenAPI schema.
+      final response = await http
+          .get(Uri.parse("http://$ip:$port/openapi.json"))
+          .timeout(const Duration(milliseconds: 1500));
+      return response.statusCode == 200 &&
+          response.body.toLowerCase().contains('omnimow');
     } catch (_) {
       return false;
     }
@@ -706,7 +721,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           const SizedBox(height: 4),
                           Text(
                             ros.isConnected
-                                ? "WebSocket: ws://${ros.currentIp}:8000/ws"
+                                ? "WebSocket: ws://${ros.currentIp}:$backendPort/ws"
+                                : ros.connectionError != null
+                                ? "ws://${ros.currentIp}:$backendPort/ws failed: ${ros.connectionError}"
                                 : "Disconnected",
                             style: TextStyle(
                               fontSize: 12,

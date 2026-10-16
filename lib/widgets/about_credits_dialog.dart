@@ -101,7 +101,7 @@ class AboutCreditsDialog extends StatelessWidget {
             ),
             _buildCreditItem(
               title: 'web_socket_channel',
-              subtitle: 'Stable real-time connection to the FastAPI backend on port 8000.',
+              subtitle: 'Stable real-time connection to the FastAPI backend on port 9000.',
               url: 'https://pub.dev/packages/web_socket_channel',
             ),
             _buildCreditItem(

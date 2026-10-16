@@ -228,10 +228,39 @@ class NerdMetricsScreen extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.satellite_alt),
-                      title: const Text("RTK GNSS Status"),
+                      leading: const Icon(Icons.storage),
+                      title: const Text("Memory (RAM)"),
                       subtitle: Text(
-                        "Fix Type: ${rosService.rtkStatus} | Satellites: ${rosService.satellites}",
+                        rosService.ramTotalMb > 0
+                            ? "${rosService.ramUsedMb} / ${rosService.ramTotalMb} MB "
+                                  "(${rosService.ramUsedPct.toStringAsFixed(1)}%)"
+                            : "Unknown",
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.camera_alt_outlined),
+                      title: const Text("Stereo Camera Calibration"),
+                      subtitle: Text(
+                        rosService.isCalibrated &&
+                                rosService.calibrationRms != null
+                            ? "Error ${rosService.calibrationRms!.toStringAsFixed(2)} px | "
+                                  "Baseline ${rosService.calibrationBaselineMm?.toStringAsFixed(1) ?? '-'} mm | "
+                                  "Focal ${rosService.calibrationFocalPx?.toStringAsFixed(0) ?? '-'} px"
+                            : "${rosService.calibrationLabel}"
+                                  "${rosService.calibrationMessage.isNotEmpty ? ' | ${rosService.calibrationMessage}' : ''}",
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.map_outlined),
+                      title: const Text("Localization (Visual SLAM)"),
+                      subtitle: Text(
+                        rosService.hasPose
+                            ? "x ${rosService.currentX.toStringAsFixed(2)} m | "
+                                  "y ${rosService.currentY.toStringAsFixed(2)} m | "
+                                  "${rosService.zones.length} lawn zone(s)"
+                            : "No position on the map yet",
                       ),
                     ),
                     const Divider(height: 1),

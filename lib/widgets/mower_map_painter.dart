@@ -2,23 +2,30 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Paints the mower map, route history, dock marker, and current robot beacon.
+/// Paints the mower's SLAM map: lawn zones, route history, dock and the robot.
+///
+/// All inputs are in metres on the mower's map (x forward from the dock, y to the left,
+/// the charging station is the origin). The view is scaled so everything fits the canvas.
 class MowerMapPainter extends CustomPainter {
   final List<Offset> path;
-  final Offset currentRobotPos;
+  final List<List<Offset>> zones;
+  final Offset robotPos;
+  final double robotYaw;
+  final bool hasPose;
   final bool isDark;
 
   MowerMapPainter({
     required this.path,
-    required this.currentRobotPos,
+    required this.zones,
+    required this.robotPos,
+    required this.robotYaw,
+    required this.hasPose,
     required this.isDark,
   });
 
   /// Draws the map layers in back-to-front order on the supplied canvas.
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-
     // 1. Draw Infinite Grid Background (Seamless technical blueprint lines)
     final gridPaint = Paint()
       ..color = isDark
@@ -34,10 +41,53 @@ class MowerMapPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    // 3. Draw charging dock station reference point at the center
-    final double centerX = size.width / 2;
-    final double centerY = size.height / 2;
-    final dockPos = Offset(centerX, centerY);
+    // 2. World (metres) -> canvas: fit zones, route, dock and robot, at least 10 m across
+    double minX = 0, maxX = 0, minY = 0, maxY = 0;
+    void include(Offset p) {
+      minX = math.min(minX, p.dx);
+      maxX = math.max(maxX, p.dx);
+      minY = math.min(minY, p.dy);
+      maxY = math.max(maxY, p.dy);
+    }
+
+    for (final zone in zones) {
+      zone.forEach(include);
+    }
+    path.forEach(include);
+    if (hasPose) {
+      include(robotPos);
+    }
+    final double span = math.max(10.0, math.max(maxX - minX, maxY - minY));
+    final double scale = (math.min(size.width, size.height) - 24.0) / span;
+    final Offset worldCentre = Offset((minX + maxX) / 2, (minY + maxY) / 2);
+    final Offset canvasCentre = Offset(size.width / 2, size.height / 2);
+    // Canvas y points down, map y points up
+    Offset toCanvas(Offset p) => Offset(
+      canvasCentre.dx + (p.dx - worldCentre.dx) * scale,
+      canvasCentre.dy - (p.dy - worldCentre.dy) * scale,
+    );
+
+    // 3. Lawn zones recorded by the mower
+    final zoneColor = isDark
+        ? const Color(0xFF00C853)
+        : const Color(0xFF4CAF50);
+    final zoneFill = Paint()
+      ..color = zoneColor.withValues(alpha: 0.10)
+      ..style = PaintingStyle.fill;
+    final zoneLine = Paint()
+      ..color = zoneColor.withValues(alpha: 0.6)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round;
+    for (final zone in zones) {
+      if (zone.length < 3) continue;
+      final zonePath = Path()..addPolygon(zone.map(toCanvas).toList(), true);
+      canvas.drawPath(zonePath, zoneFill);
+      canvas.drawPath(zonePath, zoneLine);
+    }
+
+    // 4. Charging dock station at the map origin
+    final dockPos = toCanvas(Offset.zero);
     final dockBasePaint = Paint()
       ..color = isDark ? Colors.white24 : Colors.black12
       ..style = PaintingStyle.fill;
@@ -48,12 +98,14 @@ class MowerMapPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawCircle(dockPos, 5.0, dockInnerPaint);
 
-    // 4. Draw Mowed Path (Glowing green track line)
+    // 5. Draw Mowed Path (Glowing green track line)
     if (path.length > 1) {
       final pathPoints = Path();
-      pathPoints.moveTo(path.first.dx, path.first.dy);
+      final first = toCanvas(path.first);
+      pathPoints.moveTo(first.dx, first.dy);
       for (var i = 1; i < path.length; i++) {
-        pathPoints.lineTo(path[i].dx, path[i].dy);
+        final p = toCanvas(path[i]);
+        pathPoints.lineTo(p.dx, p.dy);
       }
 
       final paintPath = Paint()
@@ -68,94 +120,59 @@ class MowerMapPainter extends CustomPainter {
       canvas.drawPath(pathPoints, paintPath);
     }
 
-    // 5. Draw Robot Beacon (Glowing white pearl with glowing radar halo)
-    // Only draw if the robot is active and not at origin (0, 0)
-    if (currentRobotPos != Offset.zero) {
-      // Draw radar pulse outer wave
-      final radarPaint = Paint()
-        ..color = isDark
-            ? const Color(0xFF00C853).withOpacity(0.15)
-            : const Color(0xFF4CAF50).withOpacity(0.2)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(currentRobotPos, 22.0, radarPaint);
+    // 6. Draw Robot Beacon (Glowing white pearl with glowing radar halo)
+    if (!hasPose) return;
+    final robot = toCanvas(robotPos);
 
-      final radarRingPaint = Paint()
-        ..color = isDark
-            ? const Color(0xFF00C853).withOpacity(0.4)
-            : const Color(0xFF4CAF50).withOpacity(0.5)
-        ..strokeWidth = 1.0
-        ..style = PaintingStyle.stroke;
-      canvas.drawCircle(currentRobotPos, 22.0, radarRingPaint);
+    final radarPaint = Paint()
+      ..color = isDark
+          ? const Color(0xFF00C853).withOpacity(0.15)
+          : const Color(0xFF4CAF50).withOpacity(0.2)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(robot, 22.0, radarPaint);
 
-      // Draw white glowing inner core
-      final coreShadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.2)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(
-        currentRobotPos + const Offset(0, 2),
-        7.0,
-        coreShadowPaint,
-      );
+    final radarRingPaint = Paint()
+      ..color = isDark
+          ? const Color(0xFF00C853).withOpacity(0.4)
+          : const Color(0xFF4CAF50).withOpacity(0.5)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawCircle(robot, 22.0, radarRingPaint);
 
-      final corePaint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(currentRobotPos, 7.0, corePaint);
+    final coreShadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.2)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(robot + const Offset(0, 2), 7.0, coreShadowPaint);
 
-      // Dynamic direction arrow (Heading indicator)
-      if (path.length > 1) {
-        // Calculate angle based on the last segment
-        final Offset lastSegment = currentRobotPos - path[path.length - 2];
-        final double angle = math.atan2(lastSegment.dy, lastSegment.dx);
+    final corePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(robot, 7.0, corePaint);
 
-        // Draw a small directional pointer triangle on top of the core
-        final arrowPath = Path();
-        const double arrowSize = 5.0;
-
-        // Vertices of the directional triangle rotated by heading angle
-        final double p1x =
-            currentRobotPos.dx + (arrowSize * 1.5 * math.cos(angle));
-        final double p1y =
-            currentRobotPos.dy + (arrowSize * 1.5 * math.sin(angle));
-
-        final double p2x =
-            currentRobotPos.dx +
-            (arrowSize * math.cos(angle + (5 * math.pi / 6)));
-        final double p2y =
-            currentRobotPos.dy +
-            (arrowSize * math.sin(angle + (5 * math.pi / 6)));
-
-        final double p3x =
-            currentRobotPos.dx +
-            (arrowSize * math.cos(angle - (5 * math.pi / 6)));
-        final double p3y =
-            currentRobotPos.dy +
-            (arrowSize * math.sin(angle - (5 * math.pi / 6)));
-
-        arrowPath.moveTo(p1x, p1y);
-        arrowPath.lineTo(p2x, p2y);
-        arrowPath.lineTo(p3x, p3y);
-        arrowPath.close();
-
-        final arrowPaint = Paint()
-          ..color = isDark ? const Color(0xFF00C853) : const Color(0xFF4CAF50)
-          ..style = PaintingStyle.fill;
-        canvas.drawPath(arrowPath, arrowPaint);
-      } else {
-        // Fallback simple center emerald dot if stationary
-        final dotPaint = Paint()
-          ..color = isDark ? const Color(0xFF00C853) : const Color(0xFF4CAF50)
-          ..style = PaintingStyle.fill;
-        canvas.drawCircle(currentRobotPos, 4.0, dotPaint);
-      }
-    }
+    // Heading arrow from the mower's yaw (map y up = canvas y down, so the angle flips)
+    final double angle = -robotYaw;
+    const double arrowSize = 5.0;
+    final arrowPath = Path()
+      ..moveTo(
+        robot.dx + arrowSize * 1.5 * math.cos(angle),
+        robot.dy + arrowSize * 1.5 * math.sin(angle),
+      )
+      ..lineTo(
+        robot.dx + arrowSize * math.cos(angle + 5 * math.pi / 6),
+        robot.dy + arrowSize * math.sin(angle + 5 * math.pi / 6),
+      )
+      ..lineTo(
+        robot.dx + arrowSize * math.cos(angle - 5 * math.pi / 6),
+        robot.dy + arrowSize * math.sin(angle - 5 * math.pi / 6),
+      )
+      ..close();
+    final arrowPaint = Paint()
+      ..color = zoneColor
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(arrowPath, arrowPaint);
   }
 
-  /// Repaints when the route, robot position, or theme changes.
+  /// Repaints on every telemetry update (the route list is mutated in place).
   @override
-  bool shouldRepaint(covariant MowerMapPainter oldDelegate) {
-    return oldDelegate.path != path ||
-        oldDelegate.currentRobotPos != currentRobotPos ||
-        oldDelegate.isDark != isDark;
-  }
+  bool shouldRepaint(covariant MowerMapPainter oldDelegate) => true;
 }

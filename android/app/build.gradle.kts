@@ -29,8 +29,7 @@ android {
 
     defaultConfig {
         multiDexEnabled = true
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.ros_mower_app"
+        applicationId = "com.omnimow.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -45,7 +44,12 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            // Without the keystore (no KEYSTORE_BASE64 secret) fall back to debug signing.
+            signingConfig = if (file("release-key.jks").exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
         }

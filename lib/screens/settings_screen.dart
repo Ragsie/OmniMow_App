@@ -21,7 +21,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   int _selectedThemeIndex = 0; // 0=System, 1=Light, 2=Dark
   bool _notifBattery = true;
-  bool _notifRtk = true;
+  bool _notifCalibration = true;
   bool _notifDocking = false;
   bool _notifCharging = false;
   bool _notifStuck = true;
@@ -53,7 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _notifBattery = prefs.getBool('notif_battery') ?? true;
-      _notifRtk = prefs.getBool('notif_rtk') ?? true;
+      _notifCalibration = prefs.getBool('notif_calibration') ?? true;
       _notifDocking = prefs.getBool('notif_docking') ?? false;
       _notifCharging = prefs.getBool('notif_charging') ?? false;
       _notifStuck = prefs.getBool('notif_stuck') ?? true;
@@ -111,6 +111,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: Text(
                 ros.isConnected
                     ? 'Connected to ${ros.currentIp}'
+                    : ros.connectionError != null
+                    ? 'Could not connect to ${ros.currentIp}'
                     : 'No connected devices',
               ),
               trailing: const Icon(Icons.chevron_right),
@@ -191,12 +193,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(indent: 16, endIndent: 16),
                 _buildSwitchTile(
-                  title: 'RTK Connection Alerts',
-                  subtitle: 'Notify me immediately when RTK GPS is lost',
-                  value: _notifRtk,
+                  title: 'Camera Calibration Alerts',
+                  subtitle:
+                      'Notify me when the stereo cameras need to be calibrated',
+                  value: _notifCalibration,
                   onChanged: (val) {
-                    setState(() => _notifRtk = val);
-                    _savePreference('notif_rtk', val);
+                    setState(() => _notifCalibration = val);
+                    _savePreference('notif_calibration', val);
                   },
                 ),
                 const Divider(indent: 16, endIndent: 16),
