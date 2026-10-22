@@ -58,6 +58,13 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
 
       _peerConnection = await createPeerConnection(configuration);
 
+      // Ask to receive video: without a transceiver the offer has no video
+      // section and the mower has nothing to answer with.
+      await _peerConnection!.addTransceiver(
+        kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
+        init: RTCRtpTransceiverInit(direction: TransceiverDirection.RecvOnly),
+      );
+
       _peerConnection!.onTrack = (RTCTrackEvent event) {
         if (event.track.kind == 'video') {
           setState(() {
