@@ -56,20 +56,18 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           
-          # Check if this is a tagged release or a rolling release from main
+          # Every build gets its own permanent release, so older versions stay
+          # downloadable. Pushed v* tags keep their tag; builds from main get
+          # a new tag per build (e.g. v1.0.0-64).
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "RELEASE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "RELEASE_NAME=OmniMow v$VERSION_NAME (Build $BUILD_NUMBER)" >> $GITHUB_ENV
-            echo "IS_PRERELEASE=false" >> $GITHUB_ENV
-            echo "APK_FILE=OmniMow-v$VERSION_NAME-$BUILD_NUMBER.apk" >> $GITHUB_ENV
-            echo "Building permanent tag release: OmniMow-v$VERSION_NAME-$BUILD_NUMBER.apk"
           else
-            echo "RELEASE_TAG=latest" >> $GITHUB_ENV
-            echo "RELEASE_NAME=OmniMow Latest Build (v$VERSION_NAME-$BUILD_NUMBER)" >> $GITHUB_ENV
-            echo "IS_PRERELEASE=false" >> $GITHUB_ENV
-            echo "APK_FILE=OmniMow-latest-android.apk" >> $GITHUB_ENV
-            echo "Building rolling development release: OmniMow-latest-android.apk"
+            echo "RELEASE_TAG=v$VERSION_NAME-$BUILD_NUMBER" >> $GITHUB_ENV
           fi
+          echo "RELEASE_NAME=OmniMow v$VERSION_NAME (Build $BUILD_NUMBER)" >> $GITHUB_ENV
+          echo "IS_PRERELEASE=false" >> $GITHUB_ENV
+          echo "APK_FILE=OmniMow-v$VERSION_NAME-$BUILD_NUMBER.apk" >> $GITHUB_ENV
+          echo "Building release: OmniMow-v$VERSION_NAME-$BUILD_NUMBER.apk"
 
       # 6. Decode Android Signing Keystore File from GitHub Secrets
       - name: Decode Android Keystore
@@ -107,8 +105,9 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      # 10. Create or Update GitHub Release (Runs on tags AND on every push to main for rolling releases)
-      - name: Create/Update GitHub Release
+      # 10. Create a new GitHub Release for this build and mark it as Latest.
+      #     Earlier releases are kept, so an older version can be installed if a build is broken.
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
@@ -118,12 +117,13 @@ jobs:
             * **Commit SHA:** `${{ github.sha }}`
             * **Build Number:** `${{ env.BUILD_NUMBER }}`
             * **Version Name:** `${{ env.VERSION_NAME }}`
-            * **Release Type:** ${{ env.RELEASE_TAG == 'latest' && '🔄 Rolling Development Release' || '📦 Permanent Tagged Release' }}
-            
-            *If you are downloading the rolling release, these assets are automatically updated on every push to the \`main\` branch. Links remain constant.*
+            * **Release Type:** ${{ startsWith(github.ref, 'refs/tags/v') && '📦 Tagged Release' || '🔄 Development Build from main' }}
+
+            *Older builds remain available under Releases if you need to roll back.*
           files: build/app/outputs/flutter-apk/${{ env.APK_FILE }}
           draft: false
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
+          make_latest: true
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -168,13 +168,13 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           
+          # Must match the release tag created by the Android job
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "RELEASE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "IOS_FILE=OmniMow-v$VERSION_NAME-$BUILD_NUMBER-ios-unsigned.zip" >> $GITHUB_ENV
           else
-            echo "RELEASE_TAG=latest" >> $GITHUB_ENV
-            echo "IOS_FILE=OmniMow-latest-ios-unsigned.zip" >> $GITHUB_ENV
+            echo "RELEASE_TAG=v$VERSION_NAME-$BUILD_NUMBER" >> $GITHUB_ENV
           fi
+          echo "IOS_FILE=OmniMow-v$VERSION_NAME-$BUILD_NUMBER-ios-unsigned.zip" >> $GITHUB_ENV
 
       # 5. Build iOS App (No Codesign - free of developer account constraints)
       - name: Build iOS App (No Codesign)
