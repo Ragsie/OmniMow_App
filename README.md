@@ -2,7 +2,7 @@
 
 
 
-[![OmniMow CI/CD Rolling Release Pipeline](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.badge.svg)](https://github.com/Ragsie/OmniMow_App/actions)
+[![OmniMow Android & iOS Build](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml)
 [![Latest Release](https://img.shields.io/github/v/release/Ragsie/OmniMow?label=latest%20release)](https://github.com/Ragsie/OmniMow_App/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg)](#)
 
@@ -10,6 +10,10 @@
 **OmniMow** is a premium, high-performance, and modular cross-platform mobile client built using Google's **Flutter** framework. It is engineered as a state-of-the-art dashboard and controller for autonomous DIY robotic lawn mowers, bridging seamlessly with a **ROS 2** and **OpenMow** robotic backend.
 
 This latest version features a **comprehensive premium UI Overhaul** inspired directly by the luxury **Segway Navimow** design aesthetic, introducing a fully integrated glassmorphic (frosted glass) interface, dark/light theme optimization, and intelligent network-level auto-discovery.
+
+<img width="214" height="437" alt="OmniMow_APP_scanning" src="https://github.com/user-attachments/assets/594f9878-8589-413a-b7dc-83032d73e996" />
+<img width="214" height="437" alt="OmniMow_APP_metrics" src="https://github.com/user-attachments/assets/b0575939-f3e8-4448-91e7-0fd3ec5a344b" />
+<img width="214" height="437" alt="OmniMow_APP_home" src="https://github.com/user-attachments/assets/a0c7b11e-b389-4d44-aa6e-464f24c29a79" />
 
 ---
 
