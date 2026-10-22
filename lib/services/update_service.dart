@@ -308,31 +308,38 @@ class UpdateService {
     String url,
   ) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final progress = ValueNotifier<double?>(null);
     scaffoldMessenger.showSnackBar(
-      const SnackBar(content: Text("Downloading update...")),
+      SnackBar(
+        duration: const Duration(days: 1), // closed when the download ends
+        content: ValueListenableBuilder<double?>(
+          valueListenable: progress,
+          builder: (_, value, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value == null
+                    ? "Downloading update..."
+                    : "Downloading update... ${(value * 100).toStringAsFixed(0)}%",
+              ),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(value: value),
+            ],
+          ),
+        ),
+      ),
     );
 
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode != 200) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              "Download failed with status code: ${response.statusCode}",
-            ),
-          ),
-        );
-        return;
-      }
-
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/update.apk');
-
       if (await file.exists()) {
         await file.delete();
       }
 
-      await file.writeAsBytes(response.bodyBytes, flush: true);
+      await _downloadWithResume(url, file, progress);
+      scaffoldMessenger.hideCurrentSnackBar();
 
       final result = await OpenFilex.open(
         file.path,
@@ -347,9 +354,91 @@ class UpdateService {
         );
       }
     } catch (e) {
+      // ClientException.toString() includes the very long signed download URL.
+      final message = e is http.ClientException ? e.message : e.toString();
+      scaffoldMessenger.hideCurrentSnackBar();
       scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text("Error during installation: $e")),
+        SnackBar(
+          content: Text(
+            "Update download failed: $message. Check your connection and try again.",
+          ),
+          duration: const Duration(seconds: 6),
+        ),
       );
+    } finally {
+      progress.dispose();
+    }
+  }
+
+  /// Streams [url] into [file], resuming with a Range request when the
+  /// connection drops, so a short network hiccup does not fail the update.
+  static Future<void> _downloadWithResume(
+    String url,
+    File file,
+    ValueNotifier<double?> progress,
+  ) async {
+    const maxAttempts = 5;
+    final client = http.Client();
+    int? totalBytes;
+    try {
+      for (int attempt = 1; ; attempt++) {
+        final received = await file.exists() ? await file.length() : 0;
+        final request = http.Request('GET', Uri.parse(url));
+        if (received > 0) request.headers['Range'] = 'bytes=$received-';
+
+        IOSink? sink;
+        try {
+          final response = await client
+              .send(request)
+              .timeout(const Duration(seconds: 30));
+
+          FileMode mode;
+          if (response.statusCode == 206 && received > 0) {
+            mode = FileMode.append; // server continues where we stopped
+          } else if (response.statusCode == 200) {
+            mode = FileMode.write; // full file (Range ignored), start over
+            totalBytes = response.contentLength;
+          } else if (response.statusCode == 416 &&
+              totalBytes != null &&
+              received >= totalBytes) {
+            break; // nothing left to fetch
+          } else {
+            throw http.ClientException(
+              "Download failed with status code: ${response.statusCode}",
+            );
+          }
+
+          int written = mode == FileMode.append ? received : 0;
+          sink = file.openWrite(mode: mode);
+          // Abort a stalled transfer instead of waiting forever.
+          await for (final chunk in response.stream.timeout(
+            const Duration(seconds: 30),
+          )) {
+            sink.add(chunk);
+            written += chunk.length;
+            if (totalBytes != null && totalBytes > 0) {
+              progress.value = written / totalBytes;
+            }
+          }
+          await sink.flush();
+          await sink.close();
+          sink = null;
+
+          if (totalBytes != null && written < totalBytes) {
+            throw http.ClientException(
+              "Connection closed before download finished",
+            );
+          }
+          break;
+        } catch (e) {
+          await sink?.close();
+          debugPrint("Update download attempt $attempt failed: $e");
+          if (attempt >= maxAttempts) rethrow;
+          await Future.delayed(Duration(seconds: 2 * attempt));
+        }
+      }
+    } finally {
+      client.close();
     }
   }
 }
