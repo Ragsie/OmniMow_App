@@ -24,7 +24,7 @@ This latest version features a **comprehensive premium UI Overhaul** inspired di
 
 ### 📡 Intelligent Auto-Discovery Onboarding (First-Run)
 * **Zero-Configuration Setup:** On its very first launch (when the mower list is empty), the app boots directly into an automated onboarding radar-scanning screen.
-* **Asynchronous Subnet Scanning:** Performs extremely fast, concurrent network-level socket checks across active subnets (scanning IP addresses sequentially on the optimized FastAPI **port 8000**).
+* **Asynchronous Subnet Scanning:** Performs extremely fast, concurrent network-level socket checks across active subnets (scanning IP addresses sequentially on the optimized FastAPI **port 9000**).
 * **Throttling & Timeout protection:** Features a strict 5-second scanner timeout. Throttling is applied to UI updates (every 8 IPs) to maintain a perfectly smooth, jitter-free **60 FPS radar animation**.
 * **One-Tap Guided Setup:** Instantly detects active mowers, prompts the user to name them, saves them persistently in shared preferences, and routes straight to the live dashboard.
 * **Seamless Fallback:** Instantly falls back to a clean manual configuration if no robot is discovered automatically.
@@ -33,7 +33,6 @@ This latest version features a **comprehensive premium UI Overhaul** inspired di
 * **No Solid Green Blocks:** Replaced the heavy, solid green boundary blocks with a completely open, technical layout.
 * **Infinite Blueprint Grid:** Features an elegant, subdued technical grid background (4% visibility) that dynamically updates on zoom/pan via `InteractiveViewer`.
 * **Docking Station Anchor:** Draws an elegant reference point (blue-glowing node) right in the center of the grid map.
-* **Pulsing GPS Beacon & Radar Halo:** The active robot is represented as a white pearl surrounded by a large, pulsing green radar circle indicating centimeter-accurate RTK-GPS status.
 * **Real-Time Direction Arrow:** Calculates moving segments dynamically to draw a sharp directional arrow on top of the robot, indicating its exact heading.
 
 ### 🔋 Diagnostics & Nerd Metrics
