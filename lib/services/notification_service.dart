@@ -11,7 +11,8 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
 
-  /// Initializes the notification plugin once and requests Android permission.
+  /// Initializes the notification plugin once and requests permission on
+  /// Android 13+ and iOS.
   Future<void> init() async {
     if (_isInitialized) return;
 
@@ -19,8 +20,17 @@ class NotificationService {
     final AndroidInitializationSettings androidSettings =
         const AndroidInitializationSettings('@mipmap/ic_launcher');
 
+    // iOS asks the user for alert, badge and sound permission on initialization
+    const DarwinInitializationSettings darwinSettings =
+        DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
+
     final InitializationSettings initSettings = InitializationSettings(
       android: androidSettings,
+      iOS: darwinSettings,
     );
 
     // Initializes the local plugin with named settings parameter
@@ -52,8 +62,17 @@ class NotificationService {
           color: const Color(0xFF00FF00),
         );
 
+    // Shows the alert as a banner with sound even while the app is in the foreground
+    const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBanner: true,
+      presentList: true,
+      presentSound: true,
+    );
+
     final NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
+      iOS: darwinDetails,
     );
 
     // Shows the notification with correct named parameters

@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math' show min;
 
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -18,6 +19,12 @@ class RosService extends ChangeNotifier {
   WebSocketChannel? _channel;
   Timer? _pollTimer;
   bool isConnected = false;
+
+  // Automatic reconnect after the WebSocket drops or the handshake fails.
+  // Stays off after an explicit disconnect().
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  bool _autoReconnect = false;
 
   /// Why the last connection attempt failed or dropped (null when fine).
   String? connectionError;
@@ -309,6 +316,15 @@ class RosService extends ChangeNotifier {
   // --- CONNECTION ---
   /// Opens the mower WebSocket and begins processing incoming telemetry.
   Future<void> connect(String name, String ip) async {
+    _reconnectAttempts = 0;
+    await _open(name, ip);
+  }
+
+  Future<void> _open(String name, String ip) async {
+    _autoReconnect = true;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+
     // Close a previous connection first, so its onDone cannot reset the new one.
     _stopPolling();
     _channel?.sink.close();
@@ -332,11 +348,13 @@ class RosService extends ChangeNotifier {
         _channel = null;
         connectionError = e.toString();
         notifyListeners();
+        _scheduleReconnect();
       }
       return;
     }
     if (_channel != channel) return; // a newer connect() took over
 
+    _reconnectAttempts = 0;
     isConnected = true;
     notifyListeners();
     loadZones();
@@ -362,14 +380,34 @@ class RosService extends ChangeNotifier {
         connectionError = e.toString();
         isConnected = false;
         notifyListeners();
+        _scheduleReconnect();
       },
       onDone: () {
         if (_channel != channel) return;
         _stopPolling();
         isConnected = false;
         notifyListeners();
+        _scheduleReconnect();
       },
     );
+  }
+
+  /// Retries the current mower with backoff (2, 4, 8, 16, then every 30 s).
+  void _scheduleReconnect() {
+    if (!_autoReconnect || currentIp.isEmpty) return;
+    if (_reconnectTimer?.isActive ?? false) return; // onError and onDone both fire
+
+    final seconds = min(30, 2 << min(_reconnectAttempts, 4));
+    _reconnectAttempts++;
+    debugPrint(
+      "Reconnecting to $currentIp in $seconds s (attempt $_reconnectAttempts)",
+    );
+    final name = currentName;
+    final ip = currentIp;
+    _reconnectTimer = Timer(Duration(seconds: seconds), () {
+      _reconnectTimer = null;
+      if (_autoReconnect && currentIp == ip) _open(name, ip);
+    });
   }
 
   /// The backend does not push all telemetry over the WebSocket, so poll the REST
@@ -407,6 +445,9 @@ class RosService extends ChangeNotifier {
   // --- DISCONNECT ---
   /// Closes the mower WebSocket and publishes the disconnected state.
   void disconnect() {
+    _autoReconnect = false;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     _stopPolling();
     _channel?.sink.close();
     _channel = null;
@@ -778,6 +819,8 @@ class RosService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _autoReconnect = false;
+    _reconnectTimer?.cancel();
     _stopPolling();
     _channel?.sink.close();
     super.dispose();

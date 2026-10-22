@@ -30,6 +30,9 @@ void main() async {
       prefs.getInt('theme_mode') ?? 0; // 0=System, 1=Light, 2=Dark
   themeNotifier.value = ThemeMode.values[savedThemeIndex];
 
+  // Initialize local notifications and request permission before alerts are shown
+  await notificationService.init();
+
   // Initialize rosService settings (Rain delay values etc.)
   await rosService.initSettings();
 
@@ -759,7 +762,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
             const SizedBox(height: 12),
             const Text(
-              'To calibrate, hold a checkerboard (10 x 7 squares of 25 mm) 0.5 - 2 m in front of '
+              'To calibrate, hold a checkerboard (11 x 8 squares of 25 mm, i.e. 10 x 7 inner corners) '
+              '0.5 - 2 m in front of '
               'the mower so both cameras see it, and move it slowly to different positions and angles.',
               style: TextStyle(fontSize: 12),
             ),
