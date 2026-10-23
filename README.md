@@ -62,14 +62,7 @@ OmniMow is built to empower the open-source and DIY robotics community. We exten
 * **[OpenMower](https://github.com/ClemensElflein/openmower)** – The pioneering firmware behind autonomous DIY lawn mowing.
 * **[ROS 2](https://www.ros.org/)** – The powerhouse robotics middleware.
 * **[VESC](https://vesc-project.com/)** – Outstanding motor controller and telemetry technology.
-
----
-
-## 📖 Quick Links
-* **[Installation & Setup Guide](INSTALL.md)** - Guide to installing OmniMow on Android and iOS devices.
-* **[Comprehensive Design & Overhaul Report](omnimow_full_navimow_overhaul-v10.md)** - View the full Navimow UI-overhaul specifications.
-* **[Consolidated Production Codebase](all_code_english_consolidated-v12.md)** - View the entire clean, compiled source code of the project.
-
+* 
 ---
 
 ## ☕ Support the Development
