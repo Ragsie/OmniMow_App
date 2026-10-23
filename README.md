@@ -2,7 +2,7 @@
 
 
 
-[![OmniMow Android & iOS Build](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.svg)](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml)
+[![OmniMow CI/CD Rolling Release Pipeline](https://github.com/Ragsie/OmniMow_App/actions/workflows/build.yml/badge.badge.svg)](https://github.com/Ragsie/OmniMow_App/actions)
 [![Latest Release](https://img.shields.io/github/v/release/Ragsie/OmniMow?label=latest%20release)](https://github.com/Ragsie/OmniMow_App/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg)](#)
 
@@ -11,15 +11,11 @@
 
 This latest version features a **comprehensive premium UI Overhaul** inspired directly by the luxury **Segway Navimow** design aesthetic, introducing a fully integrated glassmorphic (frosted glass) interface, dark/light theme optimization, and intelligent network-level auto-discovery.
 
-<img width="214" height="437" alt="OmniMow_APP_scanning" src="https://github.com/user-attachments/assets/594f9878-8589-413a-b7dc-83032d73e996" />
-<img width="214" height="437" alt="OmniMow_APP_metrics" src="https://github.com/user-attachments/assets/b0575939-f3e8-4448-91e7-0fd3ec5a344b" />
-<img width="214" height="437" alt="OmniMow_APP_home" src="https://github.com/user-attachments/assets/a0c7b11e-b389-4d44-aa6e-464f24c29a79" />
-
 ---
 
 ## ✨ Premium Highlights
 
-### 🎨 light glass-like UI Overhaul
+### 🎨 Segway Navimow UI Overhaul
 * **Glassmorphic HUD Design:** Widgets, controls, and telemetry pills float gracefully on premium frosted glass cards (`GlassCard`) utilizing dynamic, real-time background blurring (`BackdropFilter`).
 * **Material 3 Light & Dark Themes:** Fully optimized themes that adapt seamlessly:
   * *Light Mode:* Premium off-white backdrop (`0xFFF5F6FA`) with deep slate typography, translucent white glass cards, and vivid emerald-green accents.
@@ -28,7 +24,7 @@ This latest version features a **comprehensive premium UI Overhaul** inspired di
 
 ### 📡 Intelligent Auto-Discovery Onboarding (First-Run)
 * **Zero-Configuration Setup:** On its very first launch (when the mower list is empty), the app boots directly into an automated onboarding radar-scanning screen.
-* **Asynchronous Subnet Scanning:** Performs extremely fast, concurrent network-level socket checks across active subnets (scanning IP addresses sequentially on the optimized FastAPI **port 9000**).
+* **Asynchronous Subnet Scanning:** Performs extremely fast, concurrent network-level socket checks across active subnets (scanning IP addresses sequentially on the optimized FastAPI **port 8000**).
 * **Throttling & Timeout protection:** Features a strict 5-second scanner timeout. Throttling is applied to UI updates (every 8 IPs) to maintain a perfectly smooth, jitter-free **60 FPS radar animation**.
 * **One-Tap Guided Setup:** Instantly detects active mowers, prompts the user to name them, saves them persistently in shared preferences, and routes straight to the live dashboard.
 * **Seamless Fallback:** Instantly falls back to a clean manual configuration if no robot is discovered automatically.
@@ -37,6 +33,7 @@ This latest version features a **comprehensive premium UI Overhaul** inspired di
 * **No Solid Green Blocks:** Replaced the heavy, solid green boundary blocks with a completely open, technical layout.
 * **Infinite Blueprint Grid:** Features an elegant, subdued technical grid background (4% visibility) that dynamically updates on zoom/pan via `InteractiveViewer`.
 * **Docking Station Anchor:** Draws an elegant reference point (blue-glowing node) right in the center of the grid map.
+* **Pulsing GPS Beacon & Radar Halo:** The active robot is represented as a white pearl surrounded by a large, pulsing green radar circle indicating centimeter-accurate RTK-GPS status.
 * **Real-Time Direction Arrow:** Calculates moving segments dynamically to draw a sharp directional arrow on top of the robot, indicating its exact heading.
 
 ### 🔋 Diagnostics & Nerd Metrics
@@ -62,7 +59,14 @@ OmniMow is built to empower the open-source and DIY robotics community. We exten
 * **[OpenMower](https://github.com/ClemensElflein/openmower)** – The pioneering firmware behind autonomous DIY lawn mowing.
 * **[ROS 2](https://www.ros.org/)** – The powerhouse robotics middleware.
 * **[VESC](https://vesc-project.com/)** – Outstanding motor controller and telemetry technology.
-* 
+
+---
+
+## 📖 Quick Links
+* **[Installation & Setup Guide](INSTALL.md)** - Guide to installing OmniMow on Android and iOS devices.
+* **[Comprehensive Design & Overhaul Report](omnimow_full_navimow_overhaul-v10.md)** - View the full Navimow UI-overhaul specifications.
+* **[Consolidated Production Codebase](all_code_english_consolidated-v12.md)** - View the entire clean, compiled source code of the project.
+
 ---
 
 ## ☕ Support the Development

@@ -14,6 +14,7 @@ import 'screens/schedule_screen.dart';
 import 'services/live_feed.dart';
 import 'widgets/mower_map_painter.dart';
 import 'widgets/glass_card.dart'; // Direct GlassCard import
+import 'widgets/mower_update_dialog.dart';
 
 // Global ValueNotifier to handle System, Light, and Dark themes dynamically
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier<ThemeMode>(
@@ -204,6 +205,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         centerTitle: false,
         actions: [
+          // New mower software release, or an update in progress
+          if (ros.isConnected &&
+              (ros.softwareUpdateAvailable || ros.isSoftwareUpdating))
+            IconButton(
+              icon: Badge(
+                backgroundColor: ros.isSoftwareUpdating
+                    ? Colors.blueAccent
+                    : Colors.greenAccent,
+                child: const Icon(Icons.system_update_alt),
+              ),
+              tooltip: ros.isSoftwareUpdating
+                  ? 'Mower update in progress'
+                  : 'Mower update available',
+              onPressed: () => showMowerUpdateDialog(context),
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',

@@ -78,6 +78,39 @@ class RosService extends ChangeNotifier {
     }
   }
 
+  // --- MOWER SOFTWARE UPDATE (new GitHub release of the mower software) ---
+  // up_to_date | available | requested | installing | failed | error | unknown
+  String softwareState = "unknown";
+  bool softwareUpdateAvailable = false;
+  String softwareInstalled = "";
+  String softwareLatest = "";
+  String softwareReleaseName = "";
+  String softwareNotes = "";
+  String softwareMessage = "";
+  String _lastSoftwareState = "";
+
+  bool get isSoftwareUpdating =>
+      softwareState == "installing" || softwareState == "requested";
+
+  /// Short text for the update entry in settings.
+  String get softwareLabel {
+    switch (softwareState) {
+      case "up_to_date":
+        return "Up to date ($softwareInstalled)";
+      case "available":
+        return "$softwareReleaseName can be installed";
+      case "requested":
+      case "installing":
+        return "Installing $softwareLatest...";
+      case "failed":
+        return "Update failed";
+      case "error":
+        return "Could not check for updates";
+      default:
+        return "Unknown";
+    }
+  }
+
   // --- NEW TELEMETRY INTEGRATIONS (WIFI & RAIN) ---
   int wifiSignalPct = 0;
   bool rainDetected = false;
@@ -136,6 +169,14 @@ class RosService extends ChangeNotifier {
 
   /// Starts a new stereo calibration (hold the checkerboard in front of the cameras).
   Future<String> restartCalibration() => _post("/api/calibration/restart");
+
+  // --- MOWER SOFTWARE UPDATE ---
+  /// Installs the newest release on the mower (refused while it mows or drives).
+  /// The mower restarts its services; the app reconnects by itself.
+  Future<String> installSoftwareUpdate() => _post("/api/software/update");
+
+  /// Lets the mower look for a new release now instead of at its next hourly check.
+  Future<String> checkSoftwareUpdate() => _post("/api/software/check");
 
   /// Loads the lawn zones (map frame, metres) for the map.
   Future<void> loadZones() async {
@@ -533,6 +574,48 @@ class RosService extends ChangeNotifier {
       } else if (isCalibrated) {
         _hasWarnedCalibration = false;
       }
+    }
+
+    // 1a. Mower software: a new release on GitHub, or the progress of an update
+    if (data['software_update'] is Map) {
+      final sw = data['software_update'] as Map<String, dynamic>;
+      softwareState = sw['state'] as String? ?? 'unknown';
+      softwareUpdateAvailable = sw['available'] as bool? ?? false;
+      softwareInstalled = sw['installed'] as String? ?? '';
+      softwareLatest = sw['latest'] as String? ?? '';
+      softwareReleaseName = sw['name'] as String? ?? softwareLatest;
+      if (softwareReleaseName.isEmpty) softwareReleaseName = softwareLatest;
+      softwareNotes = sw['notes'] as String? ?? '';
+      softwareMessage = sw['message'] as String? ?? '';
+
+      bool allowSoftware = prefs.getBool('notif_software') ?? true;
+      // Once per release, also across app restarts
+      if (softwareUpdateAvailable &&
+          softwareLatest.isNotEmpty &&
+          allowSoftware &&
+          prefs.getString('software_notified_version') != softwareLatest) {
+        notificationService.showWarning(
+          id: 8,
+          title: "Mower update available",
+          body:
+              "$softwareReleaseName can be installed. Open Settings > Mower Software to update the mower.",
+        );
+        await prefs.setString('software_notified_version', softwareLatest);
+      }
+      // The update the user started has finished (the mower restarted in between)
+      if ((_lastSoftwareState == 'installing' ||
+              _lastSoftwareState == 'requested') &&
+          (softwareState == 'up_to_date' || softwareState == 'failed') &&
+          allowSoftware) {
+        notificationService.showWarning(
+          id: 9,
+          title: softwareState == 'failed'
+              ? "Mower update failed"
+              : "Mower updated",
+          body: softwareMessage,
+        );
+      }
+      if (softwareState != 'unknown') _lastSoftwareState = softwareState;
     }
 
     // 1b. Mowing mission: state, progress and position on the SLAM map

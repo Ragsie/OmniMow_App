@@ -1,0 +1,184 @@
+name: Sync to OmniMow_App
+
+# Carries the changes made here (the development repository) over to Ragsie/OmniMow_App as a
+# pull request. Start it under Actions -> Sync to OmniMow_App -> Run workflow.
+#
+# The two repositories have no common git history, so the changes are moved as a patch: everything
+# that changed in this repository since the last sync (the tag app-sync, or "since") is applied to
+# OmniMow_App's main with a three-way merge. Files that OmniMow_App changed on its own (e.g. the app
+# name and ID, or live_feed.dart) keep those changes; where both changed the same lines, the pull
+# request is opened as a draft with conflict markers in those files, listed in its description.
+# Changes to files OmniMow_App does not have (deleted or renamed there, e.g. CHANGELOG.md, or
+# main.yml that is build.yml there) are skipped and listed in the description.
+#
+# Needs the secret OMNIMOW_APP_TOKEN: a fine-grained token for Ragsie/OmniMow_App with Contents,
+# Pull requests and Workflows read and write (Workflows because files in .github/workflows are
+# carried over too).
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or commit here to carry over"
+        default: main
+        required: true
+      since:
+        description: "Carry over the changes after this commit (empty: since the last sync, tag app-sync)"
+        required: false
+      target:
+        description: "Repository to carry them to"
+        default: Ragsie/OmniMow_App
+        required: true
+
+permissions:
+  contents: write   # moves the app-sync tag here
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout this repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.ref }}
+        fetch-depth: 0
+        path: source
+
+    - name: Make the patch
+      id: patch
+      working-directory: source
+      env:
+        SINCE: ${{ inputs.since }}
+      run: |
+        git fetch --tags --force
+        base="${SINCE:-$(git rev-parse -q --verify 'refs/tags/app-sync^{commit}' || true)}"
+        if [ -z "$base" ]; then
+          echo "::error::No earlier sync (tag app-sync). Enter the commit to start from in 'since'."
+          exit 1
+        fi
+        base=$(git rev-parse "$base^{commit}")
+        head=$(git rev-parse HEAD)
+        # This workflow only belongs here. No rename detection: a rename is a deletion and a new file
+        paths=(-- . ':!.github/workflows/sync-to-omnimow-app.yml')
+        git diff --no-renames --binary --full-index "$base" "$head" "${paths[@]}" > ../changes.patch
+        git diff --no-renames --name-status "$base" "$head" "${paths[@]}" > ../name-status.txt
+        if [ ! -s ../changes.patch ]; then
+          echo "Nothing changed since $(git rev-parse --short "$base")"
+          echo "empty=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        git log --no-merges --format='* %s (%h)' "$base..$head" > ../commits.md
+        git diff --stat "$base" "$head" "${paths[@]}" > ../stat.txt
+        echo "base=$base" >> "$GITHUB_OUTPUT"
+        echo "head=$head" >> "$GITHUB_OUTPUT"
+        echo "short=$(git rev-parse --short "$head")" >> "$GITHUB_OUTPUT"
+
+    - name: Checkout ${{ inputs.target }}
+      if: steps.patch.outputs.empty != 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.target }}
+        token: ${{ secrets.OMNIMOW_APP_TOKEN }}
+        fetch-depth: 0
+        path: target
+
+    - name: Apply the changes on a new branch
+      if: steps.patch.outputs.empty != 'true'
+      id: apply
+      working-directory: target
+      env:
+        BASE: ${{ steps.patch.outputs.base }}
+        SHORT: ${{ steps.patch.outputs.short }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        branch="sync/app_test-$SHORT"
+        git checkout -b "$branch"
+        # The three-way merge needs the files as they were at the last sync: fetch them from here
+        git fetch --quiet ../source "$BASE"
+        # Changed or deleted here, but not in the target (deleted or renamed there): skip
+        skipped=""
+        excludes=()
+        while IFS=$'\t' read -r status path; do
+          if [ "$status" != A ] && [ ! -e "$path" ]; then
+            skipped+="$path"$'\n'
+            excludes+=("--exclude=$path")
+          fi
+        done < ../name-status.txt
+        conflicts=""
+        if ! git apply --3way --whitespace=nowarn "${excludes[@]}" ../changes.patch; then
+          conflicts=$(git diff --name-only --diff-filter=U)
+          if [ -z "$conflicts" ]; then
+            echo "::error::The changes could not be applied (see the log above)"
+            exit 1
+          fi
+        fi
+        git add -A
+        if git diff --cached --quiet; then
+          echo "OmniMow_App already has these changes"
+          echo "nothing=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        git commit -q -m "Sync from Ragsie/app_test ${SHORT}" -m "$(cat ../commits.md)"
+        git push -q origin "$branch"
+        echo "branch=$branch" >> "$GITHUB_OUTPUT"
+        {
+          echo "conflicts<<EOF"
+          echo "$conflicts"
+          echo "EOF"
+          echo "skipped<<EOF"
+          printf '%s' "$skipped"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Open the pull request
+      if: steps.patch.outputs.empty != 'true' && steps.apply.outputs.nothing != 'true'
+      working-directory: target
+      env:
+        GH_TOKEN: ${{ secrets.OMNIMOW_APP_TOKEN }}
+        BRANCH: ${{ steps.apply.outputs.branch }}
+        CONFLICTS: ${{ steps.apply.outputs.conflicts }}
+        SKIPPED: ${{ steps.apply.outputs.skipped }}
+        SHORT: ${{ steps.patch.outputs.short }}
+        TARGET: ${{ inputs.target }}
+      run: |
+        {
+          echo "Changes from \`Ragsie/app_test\` (${{ inputs.ref }} at \`$SHORT\`) since the last sync."
+          echo
+          if [ -n "$CONFLICTS" ]; then
+            echo "## ⚠️ Conflicts"
+            echo "Both repositories changed the same lines in these files. They contain conflict markers"
+            echo "(\`<<<<<<<\`, \`=======\`, \`>>>>>>>\`): fix them on this branch before merging."
+            echo
+            echo "$CONFLICTS" | sed 's/^/* `/; s/$/`/'
+            echo
+          fi
+          if [ -n "$SKIPPED" ]; then
+            echo "## Skipped"
+            echo "Changed here, but $TARGET does not have these files (deleted or renamed there). Carry the"
+            echo "changes over by hand if they are needed:"
+            echo
+            echo "$SKIPPED" | sed 's/^/* `/; s/$/`/'
+            echo
+          fi
+          echo "## Commits"
+          cat ../commits.md
+          echo
+          echo "## Files"
+          echo '```'
+          cat ../stat.txt
+          echo '```'
+        } > ../body.md
+        draft=()
+        [ -n "$CONFLICTS" ] && draft=(--draft)
+        gh pr create --repo "$TARGET" --base main --head "$BRANCH" "${draft[@]}" \
+          --title "Sync from app_test ($SHORT)" --body-file ../body.md
+
+    - name: Remember the sync
+      if: steps.patch.outputs.empty != 'true' && steps.apply.outputs.nothing != 'true'
+      working-directory: source
+      env:
+        HEAD_SHA: ${{ steps.patch.outputs.head }}
+      run: |
+        # The next run carries over only what changed after this one
+        git tag -f app-sync "$HEAD_SHA"
+        git push -f origin refs/tags/app-sync

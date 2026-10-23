@@ -8,6 +8,7 @@ import '../services/update_service.dart';
 import '../widgets/about_credits_dialog.dart';
 import '../main.dart'; // To use themeNotifier
 import '../widgets/glass_card.dart'; // Direct GlassCard import
+import '../widgets/mower_update_dialog.dart';
 import 'connection_screen.dart';
 
 /// Provides connection, theme, notification, rain-delay, and update settings.
@@ -26,6 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifCharging = false;
   bool _notifStuck = true;
   bool _notifRain = true;
+  bool _notifSoftware = true;
   bool _isLoading = true;
   bool _isCheckingUpdate = false;
 
@@ -58,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _notifCharging = prefs.getBool('notif_charging') ?? false;
       _notifStuck = prefs.getBool('notif_stuck') ?? true;
       _notifRain = prefs.getBool('notif_rain') ?? true;
+      _notifSoftware = prefs.getBool('notif_software') ?? true;
       _selectedThemeIndex = prefs.getInt('theme_mode') ?? 0;
       _isLoading = false;
     });
@@ -242,6 +245,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _savePreference('notif_rain', val);
                   },
                 ),
+                const Divider(indent: 16, endIndent: 16),
+                _buildSwitchTile(
+                  title: 'Mower Software Updates',
+                  subtitle:
+                      'Notify me when a new version of the mower software is released',
+                  value: _notifSoftware,
+                  onChanged: (val) {
+                    setState(() => _notifSoftware = val);
+                    _savePreference('notif_software', val);
+                  },
+                ),
               ],
             ),
           ),
@@ -344,6 +358,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           if (mounted)
                             setState(() => _isCheckingUpdate = false);
                         },
+                ),
+                const Divider(indent: 16, endIndent: 16),
+                ListTile(
+                  leading: Icon(
+                    Icons.system_update_alt,
+                    color: ros.softwareUpdateAvailable
+                        ? Colors.greenAccent
+                        : null,
+                  ),
+                  title: const Text('Mower Software'),
+                  subtitle: Text(
+                    ros.isConnected
+                        ? ros.softwareLabel
+                        : 'Connect to a mower to see its version',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: ros.isConnected
+                      ? () => showMowerUpdateDialog(context)
+                      : null,
                 ),
                 const Divider(indent: 16, endIndent: 16),
                 ListTile(
