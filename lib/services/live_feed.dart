@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -21,6 +22,11 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
 
   RTCPeerConnection? _peerConnection;
   WebSocketChannel? _signalingChannel;
+  StreamSubscription? _signalingSubscription;
+  bool _disposed = false;
+
+  /// Shown instead of the video when the stream cannot be started.
+  String? _error;
 
   @override
   void initState() {
@@ -31,6 +37,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
   /// Initializes the video renderer before opening the signaling connection.
   Future<void> _initRenderer() async {
     await _videoRenderer.initialize();
+    if (_disposed) return;
     setState(() {
       _isRendererInitialized = true;
     });
@@ -46,7 +53,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
       final robotIp = rosService.currentIp;
 
       if (robotIp.isEmpty) {
-        debugPrint("Error: No active IP selected!");
+        _showError("No mower selected.");
         return;
       }
 
@@ -56,7 +63,12 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
         ],
       };
 
-      _peerConnection = await createPeerConnection(configuration);
+      final pc = await createPeerConnection(configuration);
+      if (_disposed) {
+        await pc.dispose(); // screen closed while the connection was created
+        return;
+      }
+      _peerConnection = pc;
 
       // Ask to receive video: without a transceiver the offer has no video
       // section and the mower has nothing to answer with.
@@ -65,44 +77,39 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
         init: RTCRtpTransceiverInit(direction: TransceiverDirection.RecvOnly),
       );
 
-      _peerConnection!.onTrack = (RTCTrackEvent event) {
-        if (event.track.kind == 'video') {
-          setState(() {
-            _videoRenderer.srcObject = event.streams[0];
-          });
+      _peerConnection!.onTrack = (RTCTrackEvent event) async {
+        if (_disposed || event.track.kind != 'video') return;
+        // The track may arrive without a stream (no msid in the SDP).
+        MediaStream stream;
+        if (event.streams.isNotEmpty) {
+          stream = event.streams.first;
+        } else {
+          stream = await createLocalMediaStream('mower');
+          await stream.addTrack(event.track);
         }
+        if (_disposed) return;
+        setState(() {
+          _videoRenderer.srcObject = stream;
+        });
       };
 
       // Connects WebRTC signaling to port 8889 on the robot's FastAPI/MediaMTX service
       final signalingUrl = 'ws://$robotIp:8889/webrtc';
       _signalingChannel = WebSocketChannel.connect(Uri.parse(signalingUrl));
 
-      _signalingChannel!.stream.listen((message) async {
-        final data = jsonDecode(message);
-
-        if (data['type'] == 'answer') {
-          final answer = RTCSessionDescription(data['sdp'], data['type']);
-          await _peerConnection!.setRemoteDescription(answer);
-        } else if (data['type'] == 'offer') {
-          final offer = RTCSessionDescription(data['sdp'], data['type']);
-          await _peerConnection!.setRemoteDescription(offer);
-          final answer = await _peerConnection!.createAnswer();
-          await _peerConnection!.setLocalDescription(answer);
-          _signalingChannel!.sink.add(
-            jsonEncode({'type': 'answer', 'sdp': answer.sdp}),
-          );
-        } else if (data['candidate'] != null) {
-          final candidate = RTCIceCandidate(
-            data['candidate'],
-            data['sdpMid'],
-            data['sdpMLineIndex'],
-          );
-          await _peerConnection!.addCandidate(candidate);
-        }
-      });
+      _signalingSubscription = _signalingChannel!.stream.listen(
+        (message) => _handleSignalingMessage(message).catchError((Object e) {
+          debugPrint("WebRTC signaling error: $e");
+        }),
+        onError: (Object e) {
+          debugPrint("WebRTC signaling connection failed: $e");
+          _showError("Could not reach the mower camera stream.");
+        },
+      );
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        _signalingChannel!.sink.add(
+        if (_disposed || candidate.candidate == null) return;
+        _signalingChannel?.sink.add(
           jsonEncode({
             'candidate': candidate.candidate,
             'sdpMid': candidate.sdpMid,
@@ -113,21 +120,62 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
 
       final offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
-      _signalingChannel!.sink.add(
+      _signalingChannel?.sink.add(
         jsonEncode({'type': 'offer', 'sdp': offer.sdp}),
       );
     } catch (e) {
       debugPrint("WebRTC Error: $e");
+      _showError("Could not start the live stream.");
     }
+  }
+
+  /// Applies one JSON signaling message from the mower.
+  Future<void> _handleSignalingMessage(dynamic message) async {
+    final pc = _peerConnection;
+    if (_disposed || pc == null) return;
+    final data = jsonDecode(message);
+    if (data is! Map) return;
+
+    if (data['type'] == 'answer') {
+      final answer = RTCSessionDescription(data['sdp'], data['type']);
+      await pc.setRemoteDescription(answer);
+    } else if (data['type'] == 'offer') {
+      final offer = RTCSessionDescription(data['sdp'], data['type']);
+      await pc.setRemoteDescription(offer);
+      final answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      _signalingChannel?.sink.add(
+        jsonEncode({'type': 'answer', 'sdp': answer.sdp}),
+      );
+    } else if (data['candidate'] != null) {
+      final candidate = RTCIceCandidate(
+        data['candidate'],
+        data['sdpMid'],
+        data['sdpMLineIndex'],
+      );
+      await pc.addCandidate(candidate);
+    }
+  }
+
+  void _showError(String message) {
+    if (_disposed) return;
+    setState(() => _error = message);
   }
 
   /// Releases all streaming resources when the screen is removed.
   @override
   void dispose() {
     // Close and fully stop the stream as soon as the user returns to the dashboard.
+    _disposed = true;
+    _signalingSubscription?.cancel();
     _signalingChannel?.sink.close();
-    _peerConnection?.close();
-    _peerConnection?.dispose();
+    final pc = _peerConnection;
+    _peerConnection = null;
+    // Close before dispose; running both at once can race in the native plugin.
+    if (pc != null) {
+      pc.close().catchError((_) {}).whenComplete(pc.dispose);
+    }
+    _videoRenderer.srcObject = null;
     _videoRenderer.dispose();
     super.dispose();
   }
@@ -138,7 +186,16 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
       appBar: AppBar(title: const Text("YOLO Camera Feed")),
       backgroundColor: Colors.black, // Makes the video stream look better
       body: Center(
-        child: _isRendererInitialized
+        child: _error != null
+            ? Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              )
+            : _isRendererInitialized
             ? RTCVideoView(
                 _videoRenderer,
                 objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
