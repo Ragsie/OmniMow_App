@@ -13,10 +13,10 @@ import 'screens/nerd_metrics_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'services/live_feed.dart';
 import 'widgets/mower_map_painter.dart';
-import 'widgets/glass_card.dart'; // Direct GlassCard import
+import 'widgets/glass_card.dart';
 import 'widgets/mower_update_dialog.dart';
 
-// Global ValueNotifier to handle System, Light, and Dark themes dynamically
+// Theme from the settings (system, light or dark)
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier<ThemeMode>(
   ThemeMode.system,
 );
@@ -63,7 +63,7 @@ void main() async {
   );
 }
 
-/// Configures themes, shared services, and the initial route for OmniMow.
+/// Themes and the first screen.
 class OmniMowApp extends StatelessWidget {
   final bool hasMowers;
   const OmniMowApp({super.key, required this.hasMowers});
@@ -78,7 +78,7 @@ class OmniMowApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           themeMode: currentThemeMode,
 
-          // Light Theme Design Configuration (Off-white canvas, Emerald green accents)
+          // Light theme
           theme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.light,
@@ -102,7 +102,7 @@ class OmniMowApp extends StatelessWidget {
             ),
           ),
 
-          // Dark Theme Design Configuration (Midnight charcoal, glowing Emerald accents)
+          // Dark theme
           darkTheme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.dark,
@@ -141,7 +141,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  /// Schedules a silent update check after the first dashboard frame.
   @override
   void initState() {
     super.initState();
@@ -166,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(ros.currentName),
             if (ros.isConnected) ...[
               const SizedBox(width: 10),
-              // Dynamic Wi-Fi Signal Strength Indicator
+              // Wi-Fi signal
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -191,7 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
-              // Rain / Rain Delay Badge directly in app bar
+              // Rain or drying delay
               if (ros.rainDetected || ros.isRainDelayActive) ...[
                 const SizedBox(width: 12),
                 Icon(
@@ -234,7 +233,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: Stack(
         children: [
-          // Layer 1: Map-First Fullscreen Canvas (Interactive Map Background)
+          // Map behind everything (pan and zoom)
           Positioned.fill(
             child: InteractiveViewer(
               boundaryMargin: const EdgeInsets.all(500),
@@ -251,6 +250,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       robotPos: Offset(ros.currentX, ros.currentY),
                       robotYaw: ros.currentYaw,
                       hasPose: ros.hasPose,
+                      dockPos: Offset(ros.dockX, ros.dockY),
                       isDark: isDark,
                     ),
                   ),
@@ -259,7 +259,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Layer 2: Top Floating Telemetry Pills (Frosted Glass Indicators)
+          // Battery and calibration pills at the top
           Positioned(
             top: MediaQuery.of(context).padding.top + 60,
             left: 16,
@@ -348,7 +348,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Layer 3: Bottom Control Panel & Menu Actions
+          // Buttons and control panel at the bottom
           Positioned(
             bottom: 24,
             left: 16,
@@ -356,7 +356,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Floating Translucent Menu Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -435,13 +434,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Primary Navimow-style Translucent Control Dashboard
+                // Control panel
                 GlassCard(
                   padding: const EdgeInsets.all(20),
                   borderRadius: 24,
                   child: Column(
                     children: [
-                      // Header: Mower State and Progress Line
+                      // State and progress
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -545,7 +544,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                       const SizedBox(height: 12),
-                      // Sleek Progress Line Bar
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
@@ -577,7 +575,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             },
                           ),
 
-                          // Large Glowing Start / Pause Button
+                          // Start / pause
                           GestureDetector(
                             onTap: () async {
                               final message = ros.missionActive

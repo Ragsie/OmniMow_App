@@ -20,9 +20,9 @@ android {
             val keystoreFile = file("release-key.jks")
             if (keystoreFile.exists()) {
                 storeFile = keystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "mysecretpassword"
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: error("KEYSTORE_PASSWORD is not set")
                 keyAlias = System.getenv("KEY_ALIAS") ?: "omnimow"
-                keyPassword = System.getenv("KEY_PASSWORD") ?: "mysecretpassword"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: error("KEY_PASSWORD is not set")
             }
         }
     }
@@ -44,7 +44,8 @@ android {
 
     buildTypes {
         release {
-            // Without the keystore (no KEYSTORE_BASE64 secret) fall back to debug signing.
+            // Without the keystore fall back to debug signing (local builds only: CI requires the
+            // keystore, see .github/workflows/main.yml).
             signingConfig = if (file("release-key.jks").exists()) {
                 signingConfigs.getByName("release")
             } else {

@@ -10,11 +10,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Checks GitHub releases and installs or opens the appropriate platform update.
 class UpdateService {
-  // =========================================================================
-  // IMPORTANT: Ensure this matches your GitHub username and repository name!
-  // =========================================================================
-  static const String repoOwner = "Ragsie";
-  static const String repoName = "OmniMow_App"; // Your GitHub repository name
+  /// The GitHub repository (owner/name) whose releases the app updates from: the one it was built
+  /// in. The build workflow passes it (--dart-define=UPDATE_REPO=owner/name), so an app built in a
+  /// fork or a development repository updates from there; other builds use Ragsie/OmniMow_App.
+  static const String updateRepo = String.fromEnvironment(
+    'UPDATE_REPO',
+    defaultValue: 'Ragsie/OmniMow_App',
+  );
 
   /// Compares the installed build with the newest GitHub release.
   static Future<void> checkForUpdates(
@@ -28,17 +30,15 @@ class UpdateService {
       final int currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
       final String currentVersion = packageInfo.version;
 
-      // We call the full /releases list endpoint instead of /releases/latest.
-      // Why? Because /releases/latest completely ignores pre-releases (which our rolling release is)!
-      // Calling /releases returns a list of all releases (including pre-releases) sorted by date (newest first).
+      // /releases/latest skips pre-releases, so take the newest from the full list
       final url = Uri.parse(
-        'https://api.github.com/repos/$repoOwner/$repoName/releases',
+        'https://api.github.com/repos/$updateRepo/releases',
       );
 
       if (showNoUpdateDialog) {
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text("Checking for updates in $repoOwner/$repoName..."),
+            content: Text("Checking for updates in $updateRepo..."),
             duration: const Duration(seconds: 1),
           ),
         );
@@ -81,7 +81,7 @@ class UpdateService {
         return;
       }
 
-      // The first release in the array is always the absolute newest (whether rolling pre-release or stable tag)
+      // GitHub lists the newest release first
       final releaseData = releases[0] as Map<String, dynamic>;
       final String tagName = releaseData['tag_name'] ?? '';
       final String releaseName = releaseData['name'] ?? '';
@@ -89,17 +89,16 @@ class UpdateService {
           releaseData['body'] ?? 'No release notes provided.';
       final String releaseHtmlUrl =
           releaseData['html_url'] ??
-          'https://github.com/$repoOwner/$repoName/releases/latest';
+          'https://github.com/$updateRepo/releases/latest';
 
-      // Smart parsing of version and build number.
-      // If the tag_name is "latest" (used by our rolling development build), we extract the
-      // actual version and build number from the release name: "OmniMow Latest Build (v2.1.0-64)"
+      // The old rolling "latest" release has the version only in its name,
+      // e.g. "OmniMow Latest Build (v2.1.0-64)"
       String targetString = tagName;
       if (tagName == 'latest' || !RegExp(r'\d').hasMatch(tagName)) {
         targetString = releaseName;
       }
 
-      // 1. Extract version name (e.g. "2.1.0" or "1.0.63")
+      // Version, e.g. "2.1.0"
       String latestVersion = "0.0.0";
       final versionMatch = RegExp(r'v?(\d+\.\d+\.\d+)')
           .firstMatch(targetString);
@@ -107,7 +106,7 @@ class UpdateService {
         latestVersion = versionMatch.group(1)!;
       }
 
-      // 2. Extract build number (e.g. 64)
+      // Build number, e.g. 64 in "v1.0.0-64"
       int latestBuildNumber = 0;
       final dashMatch = RegExp(r'-(\d+)').firstMatch(targetString);
       if (dashMatch != null) {
@@ -150,7 +149,6 @@ class UpdateService {
         );
       }
 
-      // 3. Make robust semantic version and build check
       if (_isNewerVersion(
         latestVersion,
         currentVersion,

@@ -111,7 +111,7 @@ class RosService extends ChangeNotifier {
     }
   }
 
-  // --- NEW TELEMETRY INTEGRATIONS (WIFI & RAIN) ---
+  // --- WIFI AND RAIN ---
   int wifiSignalPct = 0;
   bool rainDetected = false;
   bool _hasWarnedRain = false;
@@ -120,6 +120,18 @@ class RosService extends ChangeNotifier {
   int rainDelayMinutes = 15;
   DateTime? rainStoppedAt;
   bool _hasWarnedRainDelay = false;
+
+  // The mower's own drying timer ("system.rain_delay"). The mower decides when mowing may start
+  // again, so its timer is shown when it sends one; the app's own countdown is only the fallback.
+  bool _mowerRainDelayKnown = false;
+  bool _mowerRainDelayActive = false;
+  int _mowerRainDelayRemainingSec = 0;
+  // While the slider moves and its value is sent, the mower's (old) drying time is not shown
+  bool _rainDelayEditing = false;
+
+  // --- WEEKLY SCHEDULE SAVED ON THE MOWER ("system.schedule") ---
+  /// {"enabled": bool, "days": {"0": [{"start": "09:00", "end": "13:00"}], ...}}, null until known.
+  Map<String, dynamic>? mowerSchedule;
 
   /// Loads persisted rain-delay settings and the last rain-stop timestamp.
   Future<void> initSettings() async {
@@ -132,7 +144,6 @@ class RosService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Stores the rain-delay duration and forwards it to the connected mower.
   Uri _api(String path) => Uri.parse("http://$currentIp:$backendPort$path");
 
   /// POSTs to the backend and returns its message (or the error) for a snackbar.
@@ -201,11 +212,28 @@ class RosService extends ChangeNotifier {
     }
   }
 
-  Future<void> updateRainDelayConfig(int minutes) async {
+  /// Shows a new rain-delay duration while the slider moves, without sending it yet.
+  void previewRainDelay(int minutes) {
+    _rainDelayEditing = true;
     rainDelayMinutes = minutes;
+    notifyListeners();
+  }
+
+  /// Stores the rain-delay duration and forwards it to the connected mower.
+  Future<void> updateRainDelayConfig(int minutes) async {
+    _rainDelayEditing = true;
+    rainDelayMinutes = minutes;
+    notifyListeners();
+    try {
+      await _sendRainDelay(minutes);
+    } finally {
+      _rainDelayEditing = false;
+    }
+  }
+
+  Future<void> _sendRainDelay(int minutes) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('rain_delay_minutes', minutes);
-    notifyListeners();
 
     if (currentIp.isEmpty) return;
     final url = _api("/api/schedule/rain_delay");
@@ -234,6 +262,8 @@ class RosService extends ChangeNotifier {
   Future<void> skipRainDelay() async {
     _clearRainStoppedTime();
     _hasWarnedRainDelay = false;
+    _mowerRainDelayActive = false;
+    _mowerRainDelayRemainingSec = 0;
     notifyListeners();
 
     if (currentIp.isEmpty) return;
@@ -261,6 +291,7 @@ class RosService extends ChangeNotifier {
   /// Whether the mower is currently waiting for the lawn to dry.
   bool get isRainDelayActive {
     if (rainDetected) return false;
+    if (_mowerRainDelayKnown) return _mowerRainDelayActive;
     if (rainStoppedAt == null) return false;
     if (rainDelayMinutes == 0) return false;
 
@@ -274,6 +305,11 @@ class RosService extends ChangeNotifier {
 
   /// Returns the number of whole minutes remaining in the rain delay.
   int get remainingRainDelayMinutes {
+    if (_mowerRainDelayKnown) {
+      return _mowerRainDelayActive
+          ? (_mowerRainDelayRemainingSec + 59) ~/ 60
+          : 0;
+    }
     if (!isRainDelayActive || rainStoppedAt == null) return 0;
     final elapsed = DateTime.now().difference(rainStoppedAt!).inMinutes;
     final remaining = rainDelayMinutes - elapsed;
@@ -322,7 +358,19 @@ class RosService extends ChangeNotifier {
   double currentYaw = 0.0;
   bool hasPose = false;
 
-  // History of every point visited by the robot (the route trace), in metres.
+  // Charging station on the map, saved by the mower itself each time it docks or leaves the dock
+  // (status "map.dock"). Until it is known, the map origin is the station.
+  double dockX = 0.0;
+  double dockY = 0.0;
+  double dockYaw = 0.0;
+  bool hasDock = false;
+  // Where the station is seen from the robot (status "map.dock_from_robot"): distance in metres and
+  // bearing from the robot's heading in radians (0 = straight ahead, positive = to the left).
+  double dockDistance = 0.0;
+  double dockBearing = 0.0;
+  bool hasDockFromRobot = false;
+
+  // Route trace in metres (a point every 10 cm, at most 20000)
   final List<Offset> pathHistory = [];
 
   // Lawn zones recorded by the mower (metres, map frame).
@@ -334,7 +382,6 @@ class RosService extends ChangeNotifier {
   bool _hasWarnedCharging = false;
   bool _hasWarnedStuck = false;
 
-  // --- POSITION AND MAP UPDATE ---
   /// Adds a map position (metres) to the route history.
   void updatePosition(double x, double y, double yaw) {
     currentX = x;
@@ -348,7 +395,6 @@ class RosService extends ChangeNotifier {
     }
   }
 
-  /// Clears the route trace.
   void clearPath() {
     pathHistory.clear();
     notifyListeners();
@@ -483,7 +529,6 @@ class RosService extends ChangeNotifier {
     }
   }
 
-  // --- DISCONNECT ---
   /// Closes the mower WebSocket and publishes the disconnected state.
   void disconnect() {
     _autoReconnect = false;
@@ -543,7 +588,7 @@ class RosService extends ChangeNotifier {
       return;
     }
 
-    // 1. Stereo calibration (replaces GPS: the mower localizes with its cameras)
+    // Stereo calibration (no GPS: the mower localizes with its cameras)
     if (data['calibration'] is Map) {
       final cal = data['calibration'] as Map<String, dynamic>;
       calibrationState = cal['state'] as String? ?? 'unknown';
@@ -576,7 +621,7 @@ class RosService extends ChangeNotifier {
       }
     }
 
-    // 1a. Mower software: a new release on GitHub, or the progress of an update
+    // Mower software: a new release on GitHub, or the progress of an update
     if (data['software_update'] is Map) {
       final sw = data['software_update'] as Map<String, dynamic>;
       softwareState = sw['state'] as String? ?? 'unknown';
@@ -618,7 +663,7 @@ class RosService extends ChangeNotifier {
       if (softwareState != 'unknown') _lastSoftwareState = softwareState;
     }
 
-    // 1b. Mowing mission: state, progress and position on the SLAM map
+    // Mowing mission: state, progress and position on the SLAM map
     if (data['mission'] is Map) {
       final mission = data['mission'] as Map<String, dynamic>;
       missionActive = mission['active'] as bool? ?? false;
@@ -638,10 +683,57 @@ class RosService extends ChangeNotifier {
       if (missionState != _lastMissionState && missionState == 'DONE') {
         loadZones();
       }
+      // Docking and charging come from mowing_control's mission state (the drive ESP32 only
+      // reports moving, stuck, rain and emergency stop)
+      if (missionState != _lastMissionState && _lastMissionState.isNotEmpty) {
+        if (missionState == 'RETURNING' &&
+            (prefs.getBool('notif_docking') ?? false)) {
+          notificationService.showWarning(
+            id: 3,
+            title: "OmniMow",
+            body: missionMessage.isEmpty
+                ? "Returning to docking station."
+                : "Returning to docking station: $missionMessage",
+          );
+        } else if (missionState == 'CHARGING' &&
+            (prefs.getBool('notif_charging') ?? false)) {
+          notificationService.showWarning(
+            id: 4,
+            title: "Charging",
+            body: "The robot is now in the charger and receiving power.",
+          );
+        }
+      }
       _lastMissionState = missionState;
     }
 
-    // 2. Parse Battery Health
+    // Robot and charging station on the SLAM map (only newer mower software sends "map")
+    if (data['map'] is Map) {
+      final map = data['map'] as Map<String, dynamic>;
+      final robot = map['robot'];
+      if (robot is List && robot.length >= 3) {
+        updatePosition(
+          (robot[0] as num).toDouble(),
+          (robot[1] as num).toDouble(),
+          (robot[2] as num).toDouble(),
+        );
+      }
+      final dock = map['dock'];
+      hasDock = dock is List && dock.length >= 3;
+      if (hasDock) {
+        dockX = (dock[0] as num).toDouble();
+        dockY = (dock[1] as num).toDouble();
+        dockYaw = (dock[2] as num).toDouble();
+      }
+      final fromRobot = map['dock_from_robot'];
+      hasDockFromRobot = fromRobot is Map;
+      if (fromRobot is Map) {
+        dockDistance = (fromRobot['distance_m'] as num? ?? 0.0).toDouble();
+        dockBearing = (fromRobot['bearing_rad'] as num? ?? 0.0).toDouble();
+      }
+    }
+
+    // Battery
     if (data['battery'] is Map) {
       final battery = data['battery'] as Map<String, dynamic>;
       batteryLevel = (battery['percentage'] as num? ?? 100.0).toDouble();
@@ -650,7 +742,7 @@ class RosService extends ChangeNotifier {
       batteryTemp = (battery['temperature_celsius'] as num? ?? 0.0).toDouble();
       chargeCycles = _toInt(battery['charge_cycles']);
 
-      // Check Low Battery settings
+      // Low battery warning, once until it is back above 25 %
       bool allowBattery = prefs.getBool('notif_battery') ?? true;
       if (batteryLevel < 20.0 && !_hasWarnedBattery && allowBattery) {
         notificationService.showWarning(
@@ -664,14 +756,13 @@ class RosService extends ChangeNotifier {
       }
     }
 
-    // 3. Parse System State (the mission state is shown while a mission runs)
+    // Robot state (during a mission the mission state is shown, except for stuck and e-stop)
     if (data['state'] != null) {
       int stateCode = _toInt(data['state']);
       mowerState = missionActive && stateCode != 4 && stateCode != 5
           ? missionState
           : _mapStateCodeToString(stateCode);
 
-      // Check State-based warnings
       // State 4 = STUCK.
       bool allowStuck = prefs.getBool('notif_stuck') ?? true;
       if (stateCode == 4 && !_hasWarnedStuck && allowStuck) {
@@ -712,8 +803,7 @@ class RosService extends ChangeNotifier {
       }
     }
 
-    // 4. Parse Cutter Motor & Power Consumption (only when the payload has them,
-    // so a calibration-only update does not reset the blade state)
+    // Blade state only when the message has it, so a calibration-only update does not reset it
     if (data.containsKey('cutter_status') || data['mission'] is Map) {
       int cutterStatus = _toInt(data['cutter_status']);
       bladeActive =
@@ -735,7 +825,7 @@ class RosService extends ChangeNotifier {
           .toDouble();
     }
 
-    // 5. Parse Statistics
+    // Statistics
     if (data['statistics'] is Map) {
       final stats = data['statistics'] as Map<String, dynamic>;
       totalDistanceKm = (stats['total_distance_km'] as num? ?? 0.0).toDouble();
@@ -743,10 +833,10 @@ class RosService extends ChangeNotifier {
       double runtimeHours = (stats['total_runtime_hours'] as num? ?? 0.0)
           .toDouble();
       totalMowingMinutes = (runtimeHours * 60).toInt();
-      operatingMinutes = totalMowingMinutes; // For backward compatibility
+      operatingMinutes = totalMowingMinutes;
     }
 
-    // 6. Parse System CPU Diagnostics (Now enriched with WiFi and Rain Sensor)
+    // System: CPU, memory, wifi, schedule and rain
     if (data['system'] is Map) {
       final sys = data['system'] as Map<String, dynamic>;
       cpuTemp = (sys['cpu_temp_celsius'] as num? ?? 0.0).toDouble();
@@ -761,13 +851,30 @@ class RosService extends ChangeNotifier {
         ramUsedPct = (mem['used_pct'] as num? ?? 0.0).toDouble();
       }
 
-      // Parse enriched system telemetry from backend.py
-      // Parse enriched system telemetry (supports both nested PDF and old flat JSON structures)
+      // The backend sends "wifi" as an object; the flat "wifi_signal_pct" is only a fallback
       if (sys.containsKey('wifi') && sys['wifi'] is Map) {
         final wifi = sys['wifi'] as Map<String, dynamic>;
         wifiSignalPct = (wifi['percentage'] as num? ?? 0).toInt();
       } else {
         wifiSignalPct = _toInt(sys['wifi_signal_pct']);
+      }
+
+      if (sys['schedule'] is Map) {
+        mowerSchedule = Map<String, dynamic>.from(sys['schedule'] as Map);
+      }
+      // The mower's drying timer; the drying time itself only from newer mower software
+      final rainDelay = sys['rain_delay'];
+      _mowerRainDelayKnown = rainDelay is Map;
+      if (rainDelay is Map) {
+        _mowerRainDelayActive = rainDelay['is_delayed'] as bool? ?? false;
+        _mowerRainDelayRemainingSec = _toInt(rainDelay['remaining_seconds']);
+        if (rainDelay['duration_seconds'] is num && !_rainDelayEditing) {
+          final minutes = _toInt(rainDelay['duration_seconds']) ~/ 60;
+          if (minutes != rainDelayMinutes) {
+            rainDelayMinutes = minutes;
+            await prefs.setInt('rain_delay_minutes', minutes);
+          }
+        }
       }
 
       bool wasRaining = rainDetected;
@@ -781,7 +888,7 @@ class RosService extends ChangeNotifier {
         _clearRainStoppedTime();
       }
 
-      // Smart Rain Detection Warning and local push notification alert
+      // Rain warning, once per shower
       bool allowRain = prefs.getBool('notif_rain') ?? true;
       if (rainDetected && !_hasWarnedRain && allowRain) {
         notificationService.showWarning(
@@ -817,20 +924,21 @@ class RosService extends ChangeNotifier {
 
     debugPrint("Command sent to robot: $command");
 
-    // Direct FastAPI WebSocket payload
     final msg = {'command': command};
     _channel?.sink.add(jsonEncode(msg));
   }
 
-  /// Converts the selected schedule into the backend's weekly JSON format.
-  Future<void> saveSchedule(
+  /// Converts the selected schedule into the backend's weekly JSON format and sends it.
+  /// Returns whether the mower saved it, and its answer (or the error) for a snackbar.
+  Future<(bool, String)> saveSchedule(
     List<String> selectedDays,
     TimeOfDay startTime,
-    int durationHours,
-  ) async {
-    if (currentIp.isEmpty) return;
+    int durationHours, {
+    bool enabled = true,
+  }) async {
+    if (currentIp.isEmpty) return (false, "Not connected to a mower");
 
-    // Map weekday name to the PDF index string (0 = Monday, 6 = Sunday)
+    // Day keys in the backend's schedule (0 = Monday, 6 = Sunday), Danish short names too
     final Map<String, String> dayMapping = {
       'Mon': '0',
       'Man': '0',
@@ -862,7 +970,7 @@ class RosService extends ChangeNotifier {
     final String endStr =
         "${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}";
 
-    // Build the "days" map according to the PDF
+    // All seven days, an empty list on days off
     final Map<String, List<Map<String, String>>> daysJson = {};
     for (int i = 0; i < 7; i++) {
       daysJson[i.toString()] = [];
@@ -877,27 +985,15 @@ class RosService extends ChangeNotifier {
       }
     }
 
-    final payload = {"enabled": true, "days": daysJson};
-
-    final url = _api("/api/schedule");
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
-      if (response.statusCode == 200) {
-        debugPrint(
-          "Schedule updated successfully on the robot via REST API: ${response.body}",
-        );
-      } else {
-        debugPrint(
-          "Failed to update schedule via REST API: ${response.statusCode}",
-        );
-      }
-    } catch (e) {
-      debugPrint("Error sending schedule to robot REST API: $e");
+    final payload = {"enabled": enabled, "days": daysJson};
+    final message = await _post("/api/schedule", payload);
+    // The backend answers "Schedule updated persistently!"
+    final saved = message.startsWith("Schedule updated");
+    if (saved) {
+      mowerSchedule = payload; // Shown right away, before the next status
+      notifyListeners();
     }
+    return (saved, message);
   }
 
   @override

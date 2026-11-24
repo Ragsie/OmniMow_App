@@ -42,14 +42,13 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
       _isRendererInitialized = true;
     });
 
-    // Creates connection ONLY when this specific screen is opened
+    // Only connect while this screen is open
     _connectWebRTC();
   }
 
   /// Negotiates a WebRTC session with the mower's camera service.
   Future<void> _connectWebRTC() async {
     try {
-      // Fetches the active robot IP directly from the central ROS Service!
       final robotIp = rosService.currentIp;
 
       if (robotIp.isEmpty) {
@@ -93,7 +92,7 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
         });
       };
 
-      // Connects WebRTC signaling to port 8889 on the robot's FastAPI/MediaMTX service
+      // Signaling with the mower's video_stream service (aiortc, port 8889)
       final signalingUrl = 'ws://$robotIp:8889/webrtc';
       _signalingChannel = WebSocketChannel.connect(Uri.parse(signalingUrl));
 
@@ -162,7 +161,6 @@ class _LiveFeedScreenState extends State<LiveFeedScreen> {
     setState(() => _error = message);
   }
 
-  /// Releases all streaming resources when the screen is removed.
   @override
   void dispose() {
     // Close and fully stop the stream as soon as the user returns to the dashboard.

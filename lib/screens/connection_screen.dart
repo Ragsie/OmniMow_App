@@ -10,8 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/ros_service.dart';
 import '../services/update_service.dart';
-import '../main.dart'; // To use themeNotifier
-import '../widgets/glass_card.dart'; // Direct GlassCard import
+import '../main.dart'; // DashboardScreen
+import '../widgets/glass_card.dart';
 
 /// Manages saved mowers and discovers reachable mower backends on the LAN.
 class ConnectionScreen extends StatefulWidget {
@@ -26,7 +26,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   final _nameController = TextEditingController();
   final _ipController = TextEditingController();
 
-  // Onboarding & Auto-Discovery States
+  // Onboarding and network scan
   bool _isLoading = true;
   bool _isOnboarding = false;
   bool _isScanning = false;
@@ -57,7 +57,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
       _isLoading = false;
 
-      // FIRST TIME LAUNCH: Trigger onboarding and auto-discovery scanner!
+      // First start: no saved mowers yet, so scan the network
       if (_mowers.isEmpty) {
         _isOnboarding = true;
         _startAutoDiscovery();
@@ -109,7 +109,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       subnets.add('192.168.1');
       subnets.add('192.168.0');
     }
-    return subnets.toSet().toList(); // Deduplicate
+    return subnets.toSet().toList();
   }
 
   /// Scans candidate hosts in bounded concurrent batches with a short timeout.
@@ -127,7 +127,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     try {
       final subnets = await _getLocalSubnets();
 
-      // Collect target IP addresses
       final List<String> targetIps = [];
       for (var subnet in subnets) {
         for (int i = 1; i <= 254; i++) {
@@ -142,7 +141,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       // We run the scans concurrently in small batches to protect file descriptors
       const int batchSize = 35;
 
-      // Strict 5-second total timeout
       final Future<void> scanTask = Future.sync(() async {
         for (int i = 0; i < totalTargets; i += batchSize) {
           if (found || !mounted || !_isScanning) break;
@@ -179,7 +177,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         }
       });
 
-      // Execute scan with strict 5-second timeout
+      // The whole scan gets 5 seconds
       await scanTask.timeout(const Duration(seconds: 5));
 
       if (found && _discoveredIp != null) {
@@ -382,7 +380,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                   const Spacer(),
 
-                  // GLASS CARD CARD CONTAINER
                   SizedBox(
                     width: double.infinity,
                     child: GlassCard(
@@ -642,7 +639,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       );
     }
 
-    // --- NORMAL FLEET CONNECTION MANAGER SCREEN ---
+    // --- SAVED MOWERS ---
     return Scaffold(
       appBar: AppBar(
         title: const Text('Fleet Connection Manager'),
@@ -674,7 +671,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title Summary Cards
               const Text(
                 'ACTIVE ROBOT',
                 style: TextStyle(

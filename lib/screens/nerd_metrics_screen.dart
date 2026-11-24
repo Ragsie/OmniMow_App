@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../services/ros_service.dart';
@@ -137,6 +139,64 @@ class NerdMetricsScreen extends StatelessWidget {
                       title: const Text("Battery Temperature"),
                       trailing: Text(
                         "${rosService.batteryTemp.toStringAsFixed(1)} °C",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // --- POSITION ON THE MAP ---
+              const Text(
+                "Position",
+                style: TextStyle(
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(
+                        Icons.my_location,
+                        color: Colors.greenAccent,
+                      ),
+                      title: const Text("Robot on the map"),
+                      trailing: Text(
+                        rosService.hasPose
+                            ? "x ${rosService.currentX.toStringAsFixed(2)} m, "
+                                  "y ${rosService.currentY.toStringAsFixed(2)} m"
+                            : "unknown",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.ev_station,
+                        color: Colors.blueAccent,
+                      ),
+                      title: const Text("Charging station"),
+                      subtitle: Text(
+                        rosService.hasDock
+                            ? "x ${rosService.dockX.toStringAsFixed(2)} m, "
+                                  "y ${rosService.dockY.toStringAsFixed(2)} m on the map"
+                            : "Not saved yet (map origin)",
+                      ),
+                      trailing: Text(
+                        rosService.hasDockFromRobot
+                            ? "${rosService.dockDistance.toStringAsFixed(1)} m, "
+                                  "${_bearingText(rosService.dockBearing)}"
+                            : "-",
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -332,4 +392,13 @@ class NerdMetricsScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Direction of the charging station seen from the robot (bearing in radians from the robot's
+/// heading, positive = to the left), e.g. "ahead", "35° left", "behind".
+String _bearingText(double bearing) {
+  final degrees = (bearing * 180 / math.pi).round();
+  if (degrees.abs() <= 10) return "ahead";
+  if (degrees.abs() >= 170) return "behind";
+  return degrees > 0 ? "$degrees° left" : "${-degrees}° right";
 }

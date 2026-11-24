@@ -4,14 +4,16 @@ import 'package:flutter/material.dart';
 
 /// Paints the mower's SLAM map: lawn zones, route history, dock and the robot.
 ///
-/// All inputs are in metres on the mower's map (x forward from the dock, y to the left,
-/// the charging station is the origin). The view is scaled so everything fits the canvas.
+/// All inputs are in metres on the mower's map (x forward from where the map was started in the
+/// dock, y to the left). The charging station is drawn at [dockPos], the position the mower saved
+/// itself, or at the map origin until it is known. The view is scaled so everything fits the canvas.
 class MowerMapPainter extends CustomPainter {
   final List<Offset> path;
   final List<List<Offset>> zones;
   final Offset robotPos;
   final double robotYaw;
   final bool hasPose;
+  final Offset dockPos;
   final bool isDark;
 
   MowerMapPainter({
@@ -20,13 +22,14 @@ class MowerMapPainter extends CustomPainter {
     required this.robotPos,
     required this.robotYaw,
     required this.hasPose,
+    this.dockPos = Offset.zero,
     required this.isDark,
   });
 
   /// Draws the map layers in back-to-front order on the supplied canvas.
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Draw Infinite Grid Background (Seamless technical blueprint lines)
+    // Background grid
     final gridPaint = Paint()
       ..color = isDark
           ? Colors.white.withOpacity(0.04)
@@ -41,8 +44,9 @@ class MowerMapPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    // 2. World (metres) -> canvas: fit zones, route, dock and robot, at least 10 m across
-    double minX = 0, maxX = 0, minY = 0, maxY = 0;
+    // Metres -> canvas: fit zones, route, dock and robot, at least 10 m across
+    double minX = dockPos.dx, maxX = dockPos.dx;
+    double minY = dockPos.dy, maxY = dockPos.dy;
     void include(Offset p) {
       minX = math.min(minX, p.dx);
       maxX = math.max(maxX, p.dx);
@@ -67,7 +71,7 @@ class MowerMapPainter extends CustomPainter {
       canvasCentre.dy - (p.dy - worldCentre.dy) * scale,
     );
 
-    // 3. Lawn zones recorded by the mower
+    // Lawn zones recorded by the mower
     final zoneColor = isDark
         ? const Color(0xFF00C853)
         : const Color(0xFF4CAF50);
@@ -86,19 +90,19 @@ class MowerMapPainter extends CustomPainter {
       canvas.drawPath(zonePath, zoneLine);
     }
 
-    // 4. Charging dock station at the map origin
-    final dockPos = toCanvas(Offset.zero);
+    // Charging station (saved by the mower, or the map origin)
+    final dock = toCanvas(dockPos);
     final dockBasePaint = Paint()
       ..color = isDark ? Colors.white24 : Colors.black12
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(dockPos, 10.0, dockBasePaint);
+    canvas.drawCircle(dock, 10.0, dockBasePaint);
 
     final dockInnerPaint = Paint()
       ..color = isDark ? const Color(0xFF0288D1) : Colors.blue
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(dockPos, 5.0, dockInnerPaint);
+    canvas.drawCircle(dock, 5.0, dockInnerPaint);
 
-    // 5. Draw Mowed Path (Glowing green track line)
+    // Route so far
     if (path.length > 1) {
       final pathPoints = Path();
       final first = toCanvas(path.first);
@@ -120,7 +124,7 @@ class MowerMapPainter extends CustomPainter {
       canvas.drawPath(pathPoints, paintPath);
     }
 
-    // 6. Draw Robot Beacon (Glowing white pearl with glowing radar halo)
+    // Robot: white dot with a green ring
     if (!hasPose) return;
     final robot = toCanvas(robotPos);
 

@@ -7,7 +7,7 @@ import '../services/ros_service.dart';
 import '../services/update_service.dart';
 import '../widgets/about_credits_dialog.dart';
 import '../main.dart'; // To use themeNotifier
-import '../widgets/glass_card.dart'; // Direct GlassCard import
+import '../widgets/glass_card.dart';
 import '../widgets/mower_update_dialog.dart';
 import 'connection_screen.dart';
 
@@ -96,7 +96,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Section 1: Connection & Fleet
           const Text(
             'FLEET CONNECTION',
             style: TextStyle(
@@ -131,7 +130,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Section 2: Visual Themes
           const Text(
             'THEME SETTINGS',
             style: TextStyle(
@@ -171,7 +169,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Section 3: Granular Push Notifications Control
           const Text(
             'PUSH NOTIFICATIONS',
             style: TextStyle(
@@ -261,7 +258,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Section 3.5: Rain Delay Settings
           const Text(
             'RAIN SENSOR SETTINGS',
             style: TextStyle(
@@ -299,29 +295,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Wait time after rain stops before resuming operation.',
+                  'Wait time after rain stops before resuming operation. '
+                  'Saved on the mower.',
                   style: TextStyle(
                     fontSize: 12,
                     color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
                 Slider(
-                  value: ros.rainDelayMinutes.toDouble(),
+                  // The mower may have a longer drying time set through its API
+                  value: ros.rainDelayMinutes.clamp(0, 120).toDouble(),
                   min: 0,
                   max: 120,
                   divisions: 24, // 5 min increments
                   label: '${ros.rainDelayMinutes} min',
                   activeColor: theme.colorScheme.primary,
-                  onChanged: (val) {
-                    ros.updateRainDelayConfig(val.toInt());
-                  },
+                  onChanged: (val) => ros.previewRainDelay(val.toInt()),
+                  // Sent to the mower once, when the slider is let go
+                  onChangeEnd: (val) => ros.updateRainDelayConfig(val.toInt()),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // Section 4: System Updates & Credits
           const Text(
             'UPDATES & ABOUT',
             style: TextStyle(
@@ -381,8 +378,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(indent: 16, endIndent: 16),
                 ListTile(
                   leading: const Icon(Icons.volunteer_activism_outlined),
-                  title: const Text('Om & Anerkendelser'),
-                  subtitle: const Text('OpenMow and ROS developers credits'),
+                  title: const Text('About & Credits'),
+                  subtitle: const Text(
+                    'OpenMower, ROS 2, VESC and other projects',
+                  ),
                   onTap: () {
                     showDialog(
                       context: context,

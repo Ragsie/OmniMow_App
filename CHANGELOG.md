@@ -1,6 +1,37 @@
-# Changelog – OmniMow app (app_test)
+# Changelog – OmniMow app
 
 Alle ændringer i appen. Nyeste øverst.
+
+## 2026-11-24 – Ny signeringsnøgle (Android)
+
+- **Appen signeres med en ny nøgle.** Den gamle er skiftet ud af sikkerhedshensyn. Android installerer ikke en opdatering, der er signeret med en anden nøgle ("App not installed"), så **afinstallér appen én gang** og installér den nye. Gemte mowers og indstillinger skal sættes op igen. iOS-appen er ikke berørt.
+- Buildet bruger en fast Flutter-version (3.50.1) og Android Gradle Plugin 9.1.1. Før kunne en ny Flutter-version stoppe buildet, uden at koden var ændret.
+
+## 2026-10-31 – Build i private repoer
+
+- I et privat repo (fx en privat fork) bygger et push til `main` ikke længere appen af sig selv: start buildet under *Actions → OmniMow Android & iOS Build → Run workflow* eller med et `v*`-tag. Så bruges der ingen Actions-minutter (iOS-buildet kører på macOS, der tæller ti gange). Offentlige repoer bygger stadig hvert push.
+
+## 2026-10-28 – Opdateringer og signering
+
+- **Appen opdaterer sig fra det GitHub-repo, den er bygget i.** Build-workflowet giver repoet med (`--dart-define=UPDATE_REPO=...`), så et build fra en fork eller et udviklings-repo henter sine opdateringer derfra. Builds uden det bruger `Ragsie/OmniMow_App`.
+- **Alle builds signeres med appens egen nøgle.** Manglede secret'en `KEYSTORE_BASE64`, blev APK'en signeret med en ny debug-nøgle ved hvert build, og Android nægtede at installere den som opdatering ("App not installed"). Nu stopper buildet uden nøglen, og workflowet tjekker, at APK'en er signeret med samme certifikat som alle releases (`android/app/signing-cert.sha256`).
+
+## 2026-10-27 – Tidsplan, regnforsinkelse og notifikationer
+
+- **Tidsplanen viser den, der er gemt på mower'en.** Skærmen startede altid med 09:00, man/ons/fre og 4 timer og overskrev mower'ens tidsplan, når man gemte. Nu læses den fra mower'ens status (`system.schedule`).
+- **Tidsplanen kan slås fra** med *Mow by schedule*. Før sendte appen altid `"enabled": true`.
+- *Save Schedule* viser mower'ens svar og lukker først, når tidsplanen er gemt. Før stod der "saved" uanset svaret.
+- **Regnforsinkelsen følger mower'ens egen tørretimer** (`system.rain_delay`), så banneret og "N min left" passer med, hvornår mower'en må klippe igen. Med nyere mower-software vises også mower'ens tørretid i indstillingerne (før 15 min i appen mod 2 timer på mower'en). Ældre mower-software: appens egen nedtælling som før.
+- Skyderen for regnforsinkelse sender først værdien, når den slippes (før én forespørgsel pr. trin).
+- **Notifikationerne "Docking Updates" og "Charging Status" virker.** De ventede på mower-tilstand 2 og 3, som ESP32'en aldrig sender; nu bruges missionens tilstand (`RETURNING`, `CHARGING`).
+- Opdateringsdialogen siger, at mower'en genstarter efter en opdatering.
+- *Om & Anerkendelser* hedder nu *About & Credits* som resten af appen.
+- README: rettet CI- og release-badge, port 9000 (ikke 8000), ingen GPS/RTK, døde links erstattet af wikierne.
+- `.gitignore`-filer er tilføjet, og en build-rapport (`android/build/`), der var kommet med i git, er fjernet.
+
+## 2026-10-24 – Ladestationen på kortet
+
+- Kortet tegner ladestationen, hvor mower'en selv har gemt den (`map.dock`), og Nerd Metrics viser robottens og stationens position samt afstand og retning til stationen. Kræver mower-software, der sender `map`.
 
 ## 2026-10-23 – Opdatering af mower-softwaren
 
@@ -8,18 +39,16 @@ Alle ændringer i appen. Nyeste øverst.
 - **Opdater mower'en fra appen.** Under *Indstillinger → Mower Software* ser du den installerede version, hvad der er nyt, og kan trykke *Install update* (`POST /api/software/update`). Mower'en skal stå stille eller være i laderen. Den bygger og genstarter sine services, og appen forbinder igen af sig selv og giver besked, når opdateringen er færdig eller fejlede.
 - *Check now* beder mower'en tjekke med det samme (`POST /api/software/check`).
 - Ny notifikationsindstilling: *Mower Software Updates*.
-- Kræver mower-softwaren fra `dev`-branchen i `Ragsie/testing` (eller nyere). Robotten henter opdateringer fra releases i `Ragsie/OmniMow`.
+- Kræver OmniMow `v2026.10.23-1` eller nyere på mower'en.
 
 ## 2026-10-22 – Live video
 
 - **Livevideoen virker nu med mower'ens nye `video_stream`-service** (`ws://<ip>:8889/webrtc`). Appen beder nu om at modtage video, når den laver sit WebRTC-offer. Før indeholdt offeret ingen video-sektion, så mower'en kunne ikke sende billede.
 
-## 2026-10-16 – Release-branchen (`realease`)
+## 2026-10-16 – Appens navn og iOS
 
-- `realease` er sat til at matche den nyeste kode igen. De filer, der var uploadet til branchen, var en ældre GPS-version uden kamerakalibrering, zoner og rettelserne nedenfor.
-- Release-buildet hedder **OmniMow** med app-id'et **`com.omnimow.app`**. APK-filer, releases og workflowet hedder også OmniMow.
-- Workflowet bygger igen **både Android (APK) og iOS** (usigneret `OmniMow-latest-ios-unsigned.zip` til Sideloadly/AltStore). iOS-bundle-id'et er også `com.omnimow.app`.
-- Testbuildet på `main` hedder stadig `omnimow-test` med app-id'et `com.omnimow.test`, så de to versioner kan ligge side om side på telefonen.
+- Appen hedder **OmniMow** med app-id'et **`com.omnimow.app`**, også på iOS. APK-filer, releases og workflowet hedder også OmniMow.
+- Workflowet bygger **både Android (APK) og iOS** (usigneret zip til Sideloadly/AltStore).
 
 ## 2026-10-16 – Telemetri og metrics
 
@@ -42,9 +71,7 @@ Alle ændringer i appen. Nyeste øverst.
 
 ## 2026-10-16 – Build (GitHub Actions)
 
-- Workflowet bygger **kun Android**. iOS-jobbet er fjernet.
 - **Rettet: buildet fejlede uden keystore.** Hvis secret'en `KEYSTORE_BASE64` mangler, bruges debug-signering.
-- Opdateringstjekket peger på repoet `Ragsie/app_test` i stedet for `OmniMow_App`. Repoet er privat, så tjekket giver 404 uden login.
 
 ## 2026-10-09 – Kamerakalibrering i stedet for GPS
 

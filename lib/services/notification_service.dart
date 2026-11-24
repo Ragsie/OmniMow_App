@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart'; // Ensures that the Color class is available
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Owns initialization and delivery of local mower alert notifications.
@@ -33,7 +33,6 @@ class NotificationService {
       iOS: darwinSettings,
     );
 
-    // Initializes the local plugin with named settings parameter
     await _notificationsPlugin.initialize(settings: initSettings);
 
     // Request notification permissions on Android 13+
@@ -75,7 +74,6 @@ class NotificationService {
       iOS: darwinDetails,
     );
 
-    // Shows the notification with correct named parameters
     await _notificationsPlugin.show(
       id: id,
       title: title,

@@ -55,8 +55,8 @@ Future<void> showMowerUpdateDialog(BuildContext context) {
               if (ros.softwareUpdateAvailable && !ros.isSoftwareUpdating) ...[
                 const SizedBox(height: 12),
                 const Text(
-                  'The mower must be stopped or docked. It rebuilds and restarts its '
-                  'services, which can take a while; the app reconnects by itself.',
+                  'The mower must be stopped or docked. It rebuilds what changed and '
+                  'then restarts, which can take a while; the app reconnects by itself.',
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],

@@ -17,7 +17,6 @@ class GlassCard extends StatelessWidget {
     this.customColor,
   });
 
-  /// Builds the blurred surface, border, shadow, and supplied child content.
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
